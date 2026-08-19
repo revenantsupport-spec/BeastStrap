@@ -1,0 +1,78 @@
+<base:WpfUiWindow x:Class="BeastStrap.UI.Elements.Dialogs.AddAccountDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:base="clr-namespace:BeastStrap.UI.Elements.Base"
+        xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Dialogs"
+        mc:Ignorable="d"
+        Title="Add an account"
+        Width="560"
+        MinHeight="0"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        Background="{ui:ThemeResource ApplicationBackgroundBrush}"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        d:DataContext="{d:DesignInstance Type=models:AddAccountViewModel}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Padding="8"
+                     Title="Add an account"
+                     ShowMinimize="False" ShowMaximize="False"
+                     CanMaximize="False"
+                     KeyboardNavigation.TabNavigation="None"
+                     Icon="pack://application:,,,/BeastStrap.ico" />
+
+        <StackPanel Grid.Row="1" Margin="16">
+            <TextBlock Text="Log in with your browser (recommended)" FontWeight="SemiBold" FontSize="14" />
+            <TextBlock Margin="0,2,0,8" TextWrapping="Wrap" FontSize="12"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="Opens a Roblox login window. Log in and the account is added automatically." />
+            <ui:Button Icon="Globe24" Content="Log in with browser"
+                       Command="{Binding BrowserLoginCommand, Mode=OneTime}"
+                       IsEnabled="{Binding IsNotBusy, Mode=OneWay}" />
+
+            <Separator Margin="0,16,0,16" />
+
+            <TextBlock Text="Or paste a cookie" FontWeight="SemiBold" FontSize="14" />
+            <TextBlock Margin="0,2,0,8" TextWrapping="Wrap" FontSize="12"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="Paste the account's .ROBLOSECURITY cookie value. Only add accounts you own — this is a full login." />
+            <TextBox Padding="8,5"
+                     MinLines="3" MaxLines="5"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"
+                     FontFamily="Consolas" FontSize="11"
+                     Text="{Binding CookieText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+            <Border Margin="0,12,0,0" Padding="10,6" CornerRadius="4"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,0,0,2"
+                    Visibility="{Binding HasStatus, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                <TextBlock TextWrapping="Wrap" FontSize="12"
+                           Text="{Binding StatusMessage, Mode=OneWay}" />
+            </Border>
+        </StackPanel>
+
+        <Border Grid.Row="2" Padding="14" Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button MinWidth="100" Content="Cancel" Command="{Binding CancelCommand, Mode=OneTime}" />
+                <ui:Button MinWidth="100" Margin="8,0,0,0" Content="Add" Appearance="Primary"
+                           Command="{Binding AddCommand, Mode=OneTime}"
+                           IsEnabled="{Binding IsNotBusy, Mode=OneWay}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+
+    <base:WpfUiWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </base:WpfUiWindow.Resources>
+</base:WpfUiWindow>

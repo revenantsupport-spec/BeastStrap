@@ -1,0 +1,194 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.BeastStrapPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:BeastStrap.UI.Elements.Settings.Pages"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      xmlns:vmroot="clr-namespace:BeastStrap.UI.ViewModels"
+      xmlns:resources="clr-namespace:BeastStrap.Resources"
+      d:DataContext="{d:DesignInstance Type=models:BeastStrapViewModel}"
+      mc:Ignorable="d" 
+      d:DesignHeight="600" d:DesignWidth="800"
+      Title="BehaviourPage"
+      Scrollable="True">
+
+    <ui:UiPage.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </ui:UiPage.Resources>
+
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Margin="0,0,0,8" Text="{x:Static resources:Strings.Menu_Bloxstrap_Description}" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+        <controls:OptionControl 
+            Header="{x:Static resources:Strings.Menu_Behaviour_AutoUpdate_Title}"
+            Description="{x:Static resources:Strings.Menu_Behaviour_AutoUpdate_Description}">
+            <ui:ToggleSwitch IsChecked="{Binding UpdateCheckingEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl
+            Header="Post-launch LIVE channel notification"
+            Description="Show a system tray balloon confirming the launch used the LIVE channel. Turn off if you find it noisy.">
+            <ui:ToggleSwitch IsChecked="{Binding LiveChannelToastEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <Border Margin="0,8,0,0" Padding="12,8" CornerRadius="4"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                <Run FontWeight="SemiBold">Analytics: </Run>
+                <Run>Permanently disabled in this edition. Nothing is ever sent to BeastStrap upstream or anywhere else.</Run>
+            </TextBlock>
+        </Border>
+
+        <!-- This does not need i18n as this is locked behind "Developer Mode" -->
+        <controls:OptionControl
+            Visibility="{Binding Path=WebEnvironmentVisibility, Mode=OneTime}"
+            Header="Web environment" 
+            Description="Site to use for metrics">
+            <ComboBox Width="200" Padding="10,5,10,5"
+                      ItemsSource="{Binding WebEnvironments, Mode=OneWay}"
+                      SelectedValue="{Binding WebEnvironment, Mode=TwoWay}"
+                      MaxDropDownHeight="240"
+                      PreviewMouseWheel="ComboBox_PreviewMouseWheel" />
+        </controls:OptionControl>
+
+        <!-- Privacy mode toggle -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Privacy mode (clear tracking cookies before launch)"
+            Description="Truncates Roblox's RobloxCookies.dat right before every launch, so each session starts without cached session-tracking cookies from the previous run. Cookie-level only. This does NOT spoof MAC / HWID / machine GUID, and does NOT affect BanAsync device-level fingerprinting.">
+            <ui:ToggleSwitch IsChecked="{Binding PrivacyModeEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.30.3: close RobloxCrashHandler to free memory (Froststrap-style) -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Close Roblox's crash handler (free memory)"
+            Description="While Roblox is running, BeastStrap closes the RobloxCrashHandler.exe background process to free the memory it holds. Roblox still runs normally. Off by default. Note: with this on, BeastStrap can't use the crash handler to detect Roblox crashes.">
+            <ui:ToggleSwitch IsChecked="{Binding CloseRobloxCrashHandlerEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.30.5: disable Roblox's built-in screenshot + video recording -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Disable Roblox screenshots &amp; recordings"
+            Description="Stops Roblox's built-in screenshot and video recording from saving, by blocking the folders Roblox writes them to (your Pictures\Roblox and Videos\Roblox). Any existing captures are moved to a backup folder and restored when you turn this off. Off by default. Note: the in-game screenshot/record hotkeys stop working while this is on.">
+            <ui:ToggleSwitch IsChecked="{Binding DisableRobloxCapturesEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.28: Stream Mode toggle -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Stream mode (hide account info from screen-share)"
+            Description="When on, BeastStrap hides your Roblox username from Discord Rich Presence, replaces the place ID on the bootstrapper dialog with a generic 'Joining a Roblox experience', and rewrites the Roblox window title to just 'Roblox'. Useful if you stream or record your screen.">
+            <ui:ToggleSwitch IsChecked="{Binding StreamModeEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.28: Tray launcher toggle -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="System tray launcher (start with Windows)"
+            Description="Adds BeastStrap to Windows startup as a small system tray icon. Right-click the icon to switch profiles or open settings, double-click to open the launch menu. No admin needed. Turn off to remove from startup.">
+            <ui:ToggleSwitch IsChecked="{Binding TrayLauncherEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.28: Roblox LIVE-change toast -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Notify when Roblox ships a new LIVE build"
+            Description="Pops a Windows notification when Roblox's official LIVE channel moves to a new build. Checked when you open BeastStrap, and every 30 minutes if the tray launcher above is running. Off by default.">
+            <ui:ToggleSwitch IsChecked="{Binding NotifyOnLiveChange, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.28: Executor-update toast -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Notify when a tracked executor updates"
+            Description="Pops a Windows notification when an executor with a Versions Manager profile publishes a new build on weao.xyz. Same polling schedule as the LIVE-change toast above. Off by default.">
+            <ui:ToggleSwitch IsChecked="{Binding NotifyOnExecutorUpdate, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- v420.29.5: BeastStrap update toast -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Notify when a BeastStrap update is available"
+            Description="Pops a Windows notification when a newer version of BeastStrap is released. Checked when you open BeastStrap, and every 30 minutes if the tray launcher above is running. On by default.">
+            <ui:ToggleSwitch IsChecked="{Binding NotifyOnAppUpdate, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- Auto window tiling toggle -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Auto window tiling"
+            Description="After launch, arranges all open Roblox windows in a grid on your primary monitor. Handy when running multiple clients at once. Ignored if you only have one window open.">
+            <ui:ToggleSwitch IsChecked="{Binding WindowTilingEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Tiling layout"
+            Description="Grid shape for auto tiling. Auto picks rows and columns based on how many windows are open.">
+            <ComboBox Width="140" Padding="10,5,10,5"
+                      ItemsSource="{Binding WindowTilingLayouts, Mode=OneWay}"
+                      SelectedValue="{Binding WindowTilingLayout, Mode=TwoWay}"
+                      MaxDropDownHeight="240"
+                      PreviewMouseWheel="ComboBox_PreviewMouseWheel" />
+        </controls:OptionControl>
+
+        <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap">
+            <Run>Privacy mode, multi-instance and auto window tiling adapted from</Run>
+            <Hyperlink Command="vmroot:GlobalViewModel.OpenWebpageCommand"
+                       CommandParameter="https://gitlab.com/centerepic/robloxmanager">sasha / centerepic's robloxmanager</Hyperlink>
+            <Run>(MIT).</Run>
+        </TextBlock>
+
+        <!-- Clear Roblox cache -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Clear Roblox cache"
+            Description="Delete the Roblox client cache (BeastStrap's version cache + the default-location Roblox install). Your settings, FastFlags, and custom themes are kept. Roblox will redownload the client on next launch.">
+            <ui:Button MinWidth="100" Icon="Delete24" Content="Clear" Appearance="Danger"
+                       Command="{Binding ClearRobloxCacheCommand, Mode=OneTime}" />
+        </controls:OptionControl>
+
+        <!-- Debug mode toggle -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Debug mode"
+            Description="Reveals diagnostic tools below: run a health check, jump to the log folder, or build a one-click diagnostic snapshot (zip) you can hand the maintainer to debug a problem. None of these change BeastStrap's behaviour — they only surface information.">
+            <ui:ToggleSwitch IsChecked="{Binding DebugModeEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- Debug actions (visible only when debug mode is on) -->
+        <StackPanel Margin="0,8,0,0" Visibility="{Binding DebugModeVisibility, Mode=OneWay}">
+            <WrapPanel>
+                <ui:Button Icon="Heart24" Content="Run health check"
+                           Appearance="Primary"
+                           Margin="0,0,8,8"
+                           Command="{Binding RunHealthCheckCommand, Mode=OneTime}" />
+                <ui:Button Icon="FolderOpen24" Content="Open log folder"
+                           Margin="0,0,8,8"
+                           Command="{Binding OpenLogFolderCommand, Mode=OneTime}" />
+                <ui:Button Icon="DocumentBulletList24" Content="Save diagnostic snapshot"
+                           Margin="0,0,8,8"
+                           Command="{Binding SaveDiagnosticSnapshotCommand, Mode=OneTime}" />
+                <ui:Button Icon="FolderArrowRight24" Content="Open debug folder"
+                           Margin="0,0,8,8"
+                           Command="{Binding OpenDebugFolderCommand, Mode=OneTime}" />
+            </WrapPanel>
+            <TextBlock FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Text="Save diagnostic snapshot builds a zip in the debug folder containing your settings, every log file, environment info, detected network adapters, running Roblox processes, a health check, and a fresh GitHub probe. Send that one file to the maintainer when reporting a bug." />
+        </StackPanel>
+
+        <ui:CardExpander Margin="0,8,0,0" IsExpanded="True">
+            <ui:CardExpander.Header>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock FontSize="14" Text="{x:Static resources:Strings.Menu_Bloxstrap_ExportData_Title}" />
+                        <TextBlock FontSize="12" Text="{x:Static resources:Strings.Menu_Bloxstrap_ExportData_Description}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="1" MinWidth="100" Margin="0,0,16,0" Icon="CopySelect20" Content="{x:Static resources:Strings.Common_Export}" Command="{Binding ExportDataCommand}" />
+                </Grid>
+            </ui:CardExpander.Header>
+            <TextBlock FontSize="11" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Text="The zip includes your settings, every BeastStrap log (including this session), the latest Roblox client logs, environment info and a health check — everything needed to diagnose a crash. Choose where to save it, then send us that one file." />
+        </ui:CardExpander>
+    </StackPanel>
+</ui:UiPage>

@@ -1,0 +1,77 @@
+<UserControl x:Class="BeastStrap.UI.Elements.Controls.AmbientBackground"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             IsHitTestVisible="False"
+             Visibility="{DynamicResource AuroraVisibility}"
+             d:DesignHeight="480" d:DesignWidth="820">
+    <!--
+        Ambient "aurora" for hero surfaces (launcher, Home). Three soft radial-gradient blobs on
+        the deep ink that drift slowly on a looping storyboard. The radial gradients fade to fully
+        transparent at the edge, so no BlurEffect is needed - it stays cheap and never touches the
+        crispness of the content layered on top. Not hit-testable, so it never eats clicks.
+    -->
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="Loaded">
+            <BeginStoryboard>
+                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                    <!-- Blue blob -->
+                    <DoubleAnimation Storyboard.TargetName="BlobCyan" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                     From="-40" To="50" Duration="0:0:15" />
+                    <DoubleAnimation Storyboard.TargetName="BlobCyan" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                     From="0" To="34" Duration="0:0:19" />
+                    <!-- Violet blob -->
+                    <DoubleAnimation Storyboard.TargetName="BlobPurple" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                     From="30" To="-40" Duration="0:0:21" />
+                    <DoubleAnimation Storyboard.TargetName="BlobPurple" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                     From="-20" To="26" Duration="0:0:17" />
+                    <!-- Ice blob -->
+                    <DoubleAnimation Storyboard.TargetName="BlobGreen" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                     From="10" To="-46" Duration="0:0:23" />
+                    <DoubleAnimation Storyboard.TargetName="BlobGreen" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                     From="20" To="-22" Duration="0:0:16" />
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </UserControl.Triggers>
+
+    <Grid ClipToBounds="True">
+        <Ellipse x:Name="BlobCyan" Width="520" Height="520" Opacity="0.22"
+                 HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-150,-170,0,0"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#4038BDF8" Offset="0" />
+                    <GradientStop Color="#0038BDF8" Offset="1" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <Ellipse x:Name="BlobPurple" Width="480" Height="480" Opacity="0.18"
+                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-180,-140,0"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#40A78BFA" Offset="0" />
+                    <GradientStop Color="#00A78BFA" Offset="1" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <Ellipse x:Name="BlobGreen" Width="560" Height="560" Opacity="0.14"
+                 HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="60,0,0,-260"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#307DD3FC" Offset="0" />
+                    <GradientStop Color="#007DD3FC" Offset="1" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+    </Grid>
+</UserControl>

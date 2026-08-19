@@ -1,0 +1,119 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.About.Pages.AboutPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels"
+      xmlns:dmodels="clr-namespace:BeastStrap.UI.ViewModels.About"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:resources="clr-namespace:BeastStrap.Resources"
+      mc:Ignorable="d"
+      d:DesignHeight="1500" d:DesignWidth="800"
+      d:DataContext="{d:DesignInstance dmodels:AboutViewModel, IsDesignTimeCreatable=True}"
+      Title="AboutPage"
+      KeyDown="UiPage_KeyDown"
+      Scrollable="True">
+
+    <ui:UiPage.Resources>
+        <Storyboard x:Key="EggStoryboard">
+            <DoubleAnimation Storyboard.TargetName="Image1" Storyboard.TargetProperty="Opacity" From="1.0" To="0.0" Duration="0:0:3" />
+            <DoubleAnimation Storyboard.TargetName="Image2" Storyboard.TargetProperty="Opacity" From="0.0" To="1.0" Duration="0:0:3" />
+        </Storyboard>
+    </ui:UiPage.Resources>
+
+    <StackPanel Margin="0,0,14,14">
+
+        <Grid Margin="0,0,0,24" HorizontalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Image x:Name="Image1" Grid.Column="0" Width="72" Height="72" VerticalAlignment="Center" Source="pack://application:,,,/Resources/BeastStrapIcon.png" RenderOptions.BitmapScalingMode="HighQuality" />
+            <Image x:Name="Image2" Grid.Column="0" Width="72" Height="72" VerticalAlignment="Center" Source="pack://application:,,,/Resources/BootstrapperStyles/ByfronDialog/Matt.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0" />
+            
+            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="BeastStrap" Margin="0,0,4,0" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource BrandGradientBrush}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Version, Mode=OneTime}" Margin="4,0,0,2" VerticalAlignment="Bottom" FontSize="16" FontWeight="Medium" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                </Grid>
+                <TextBlock Text="{x:Static resources:Strings.Menu_About_Description}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+            </StackPanel>
+        </Grid>
+
+        <WrapPanel HorizontalAlignment="Center" Orientation="Horizontal">
+            <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_GithubRepository}" Icon="Code24" NavigateUri="https://github.com/revenantsupport-spec/BeastStrap" />
+            <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_HelpInformation}" Icon="BookQuestionMark24" NavigateUri="https://github.com/revenantsupport-spec/BeastStrap" />
+            <ui:Anchor Margin="0,0,0,8" Content="{x:Static resources:Strings.Menu_About_DiscordServer}" Icon="Chat48" NavigateUri="https://discord.robloxscripts.com/" />
+        </WrapPanel>
+
+        <!-- Portable-mode indicator -->
+        <Border Margin="0,16,0,0" Padding="12,8" CornerRadius="4"
+                Background="#402EA84A" BorderBrush="#2EA84A" BorderThickness="0,0,0,2"
+                Visibility="{Binding PortableModeVisibility, Mode=OneTime}">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                <Run FontWeight="SemiBold">Portable mode is active.</Run>
+                <Run Text="{Binding PortableDescription, Mode=OneTime}" />
+                <Run>To switch to a normal install, delete portable.txt and relaunch.</Run>
+            </TextBlock>
+        </Border>
+
+        <Border Margin="0,16,0,0" Padding="14" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Diagnostic info" FontWeight="SemiBold" FontSize="14" />
+                    <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="Copies a short text blob with fork version, OS, pinned hash, current LIVE, and running Roblox processes. Handy to include when asking for help. No cookies, account info, or file paths." />
+                </StackPanel>
+                <ui:Button Grid.Column="1" Margin="12,0,0,0" Icon="Copy24" Content="Copy"
+                           Command="{Binding CopyDiagnosticInfoCommand, Mode=OneTime}" />
+            </Grid>
+        </Border>
+
+        <StackPanel Visibility="{Binding BuildInformationVisibility, Mode=OneTime}">
+            <TextBlock Text="Build Information" FontWeight="Medium" FontSize="20" Margin="0,16,0,0" />
+
+            <Grid Column="0" Margin="0,8,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,4,16,4" FontSize="14" FontWeight="Medium" Text="Timestamp" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Text="{Binding BuildTimestamp, Mode=OneTime}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,4,16,4" FontSize="14" FontWeight="Medium" Text="Machine" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Text="{Binding BuildMetadata.Machine, Mode=OneTime}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,4,16,4" FontSize="14" FontWeight="Medium" Text="Commit Hash" Visibility="{Binding BuildCommitVisibility, Mode=OneTime}" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Visibility="{Binding BuildCommitVisibility, Mode=OneTime}">
+                  <Hyperlink Foreground="{DynamicResource TextFillColorTertiaryBrush}" Command="models:GlobalViewModel.OpenWebpageCommand" CommandParameter="{Binding BuildCommitHashUrl, Mode=OneTime}">
+                    <TextBlock Text="{Binding BuildMetadata.CommitHash, Mode=OneTime}" />
+                  </Hyperlink>
+                </TextBlock>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,4,16,4" FontSize="14" FontWeight="Medium" Text="Commit Ref" Visibility="{Binding BuildCommitVisibility, Mode=OneTime}" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Text="{Binding BuildMetadata.CommitRef, Mode=OneTime}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Visibility="{Binding BuildCommitVisibility, Mode=OneTime}" />
+            </Grid>
+        </StackPanel>
+
+    </StackPanel>
+</ui:UiPage>

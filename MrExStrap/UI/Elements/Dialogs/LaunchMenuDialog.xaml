@@ -1,0 +1,99 @@
+<base:WpfUiWindow x:Class="BeastStrap.UI.Elements.Dialogs.LaunchMenuDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:BeastStrap.UI.Elements.Dialogs"
+        xmlns:base="clr-namespace:BeastStrap.UI.Elements.Base"
+        xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+        xmlns:models="clr-namespace:BeastStrap.UI.ViewModels"
+        xmlns:resources="clr-namespace:BeastStrap.Resources"
+        mc:Ignorable="d"
+        Title="BeastStrap"
+        MinWidth="0"
+        MinHeight="0"
+        Width="600"
+        Height="500"
+        ResizeMode="NoResize"
+        Background="{ui:ThemeResource ApplicationBackgroundBrush}"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Ambient aurora behind everything -->
+        <controls:AmbientBackground Grid.RowSpan="2" />
+
+        <ui:TitleBar Grid.Row="0" Grid.ColumnSpan="2" Padding="8" ShowMinimize="False" ShowMaximize="False" Title="BeastStrap" Icon="pack://application:,,,/BeastStrap.ico" CanMaximize="False" KeyboardNavigation.TabNavigation="None" />
+
+        <!-- User wallpaper backdrop (collapsed unless the user sets one). Shares the content row
+             with the body so the row gets a definite height and the image doesn't collapse. -->
+        <controls:WallpaperBackground Grid.Row="1" />
+
+        <Grid Grid.Row="1" Margin="4,4,4,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="292" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0" VerticalAlignment="Center" Margin="14,0,6,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,26">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Image Grid.Column="0" Width="72" Height="72" Source="pack://application:,,,/Resources/BeastStrapIcon.png"
+                               RenderOptions.BitmapScalingMode="HighQuality" Effect="{DynamicResource BrandGlowSoft}" />
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="BeastStrap" FontSize="22" FontWeight="SemiBold" LineHeight="24" />
+                            <TextBlock Text="{Binding Version, Mode=OneTime}" VerticalAlignment="Bottom" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                            <Border Margin="0,8,0,0" Padding="10,4" CornerRadius="10" HorizontalAlignment="Left"
+                                    Background="{Binding ChannelLockBackground, Mode=OneTime}">
+                                <TextBlock Text="{Binding ChannelLockText, Mode=OneTime}" FontSize="11" FontWeight="SemiBold" Foreground="White" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                        <ui:Hyperlink Icon="QuestionCircle48" Content="{x:Static resources:Strings.About_Title}" Command="{Binding LaunchAboutCommand, Mode=OneTime}" HorizontalAlignment="Center" />
+                        <ui:Hyperlink Icon="PeopleCommunity28" Content="Roblox Exploit Community" NavigateUri="https://robloxscripts.com/" HorizontalAlignment="Center" />
+                        <ui:Hyperlink Icon="PlayCircle28" Content="YouTube" NavigateUri="https://www.youtube.com/@RealMrExploit-f5h" HorizontalAlignment="Center" />
+                        <ui:Hyperlink Icon="ArrowClockwise24" Content="Check for updates" Command="{Binding CheckForUpdatesCommand, Mode=OneTime}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Column="1" Margin="10,4,16,4" VerticalAlignment="Center">
+                    <!-- Hero launch CTA: clean cyan->green gradient (glow removed, glassy look). -->
+                    <ui:Button x:Name="LaunchButton" TabIndex="0" Appearance="Primary" Icon="Play24" FontSize="15" Height="54"
+                               Margin="0,0,0,10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                               Content="{x:Static resources:Strings.LaunchMenu_LaunchRoblox}"
+                               Command="{Binding LaunchRobloxCommand, Mode=OneTime}" />
+
+                    <ui:CardAction Margin="0,4,0,0" TabIndex="1" Icon="Settings28" Command="{Binding LaunchSettingsCommand, Mode=OneTime}">
+                        <StackPanel>
+                            <TextBlock FontSize="14" Text="{x:Static resources:Strings.LaunchMenu_ConfigureSettings}" />
+                        </StackPanel>
+                    </ui:CardAction>
+
+                    <ui:CardAction Margin="0,8,0,0" TabIndex="2" Icon="ArrowReset24" Command="{Binding ResetToStockCommand, Mode=OneTime}">
+                        <StackPanel>
+                            <TextBlock FontSize="14" TextWrapping="Wrap" Text="Reset to non-BeastStrap setup" />
+                            <TextBlock Margin="0,2,0,0" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                       Text="Hand Roblox back to normal so you can use Volt or other non-bootstrapper tools. Re-hooks when you next launch through BeastStrap." />
+                        </StackPanel>
+                    </ui:CardAction>
+                </StackPanel>
+            </Grid>
+    </Grid>
+</base:WpfUiWindow>

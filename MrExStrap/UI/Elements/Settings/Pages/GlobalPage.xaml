@@ -1,0 +1,129 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.GlobalPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      mc:Ignorable="d"
+      d:DesignHeight="1200" d:DesignWidth="800"
+      Title="GlobalPage"
+      Scrollable="True">
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Text="Roblox's own in-game settings — the ones behind Esc, Settings while you're playing. Edited here so they survive reinstalls and profile switches."
+                   FontSize="14" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,10" />
+
+        <!-- Roblox rewrites this file on exit, so state matters more here than on our own pages. -->
+        <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                    Visibility="{Binding MissingFileVisibility}"
+                    Title="No settings file yet"
+                    Message="Roblox hasn't created GlobalBasicSettings_13.xml. Launch Roblox once and change any in-game setting, then come back and hit Reload." />
+
+        <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False" Margin="0,0,0,8"
+                    Visibility="{Binding RobloxRunningVisibility}"
+                    Title="Roblox is running"
+                    Message="Roblox overwrites this file when it closes. Turn on Lock below, or close Roblox first, or anything you save now will be lost." />
+
+        <TextBlock Text="{Binding StatusText}" FontSize="12" TextWrapping="Wrap" Margin="2,0,0,6"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+
+        <!-- ===== User interface ===== -->
+        <TextBlock Text="User interface" FontSize="20" FontWeight="Medium" Margin="0,14,0,4" />
+
+        <controls:OptionControl Header="UI transparency" Description="How see-through Roblox's in-game menus are. 1 is fully opaque.">
+            <StackPanel Orientation="Horizontal">
+                <Slider Width="180" Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                        VerticalAlignment="Center" Value="{Binding UiTransparency, Mode=TwoWay}" />
+                <TextBlock Width="40" Margin="8,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding UiTransparency, StringFormat={}{0:0.00}}" />
+            </StackPanel>
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Text size" Description="Overall UI text size in the Roblox client.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding TextSizes, Mode=OneTime}" SelectedItem="{Binding SelectedTextSize, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Reduced motion" Description="Turns off Roblox's UI animations.">
+            <ui:ToggleSwitch IsChecked="{Binding ReducedMotion, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Chat visible" Description="Show the in-game chat window.">
+            <ui:ToggleSwitch IsChecked="{Binding ChatVisible, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Player names" Description="Show name labels above other players.">
+            <ui:ToggleSwitch IsChecked="{Binding PlayerNames, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Player list" Description="Show the player list on the right-hand side.">
+            <ui:ToggleSwitch IsChecked="{Binding PlayerList, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Badge notifications" Description="Show a popup when you earn a badge.">
+            <ui:ToggleSwitch IsChecked="{Binding BadgeVisible, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Performance stats" Description="Roblox's built-in FPS and network overlay (Shift+F5 style stats).">
+            <ui:ToggleSwitch IsChecked="{Binding PerformanceStats, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- ===== Graphics ===== -->
+        <TextBlock Text="Graphics and rendering" FontSize="20" FontWeight="Medium" Margin="0,22,0,4" />
+
+        <controls:OptionControl Header="Framerate cap" Description="Roblox's own FPS limit. This is separate from the FPS unlocker on the Engine Settings page.">
+            <ui:TextBox Width="120" Text="{Binding FramerateCap, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Graphics quality" Description="Automatic lets Roblox pick. 1 is lowest, 10 is highest.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding QualityLevels, Mode=OneTime}" SelectedItem="{Binding SelectedQualityLevel, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Fullscreen" Description="Start the client in fullscreen.">
+            <ui:ToggleSwitch IsChecked="{Binding Fullscreen, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Start maximized" Description="When windowed, open maximized.">
+            <ui:ToggleSwitch IsChecked="{Binding StartMaximized, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- ===== Audio and input ===== -->
+        <TextBlock Text="Audio and input" FontSize="20" FontWeight="Medium" Margin="0,22,0,4" />
+
+        <controls:OptionControl Header="Master volume" Description="In-game master volume.">
+            <StackPanel Orientation="Horizontal">
+                <Slider Width="180" Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                        VerticalAlignment="Center" Value="{Binding MasterVolume, Mode=TwoWay}" />
+                <TextBlock Width="40" Margin="8,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding MasterVolume, StringFormat={}{0:0.00}}" />
+            </StackPanel>
+        </controls:OptionControl>
+
+        <controls:OptionControl Header="Mouse sensitivity" Description="In-game camera sensitivity.">
+            <StackPanel Orientation="Horizontal">
+                <Slider Width="180" Minimum="0" Maximum="2" TickFrequency="0.02" IsSnapToTickEnabled="True"
+                        VerticalAlignment="Center" Value="{Binding MouseSensitivity, Mode=TwoWay}" />
+                <TextBlock Width="40" Margin="8,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding MouseSensitivity, StringFormat={}{0:0.00}}" />
+            </StackPanel>
+        </controls:OptionControl>
+
+        <!-- ===== Applying ===== -->
+        <TextBlock Text="Applying" FontSize="20" FontWeight="Medium" Margin="0,22,0,4" />
+
+        <controls:OptionControl Header="Lock the file"
+                                Description="Marks the settings file read-only so Roblox can't overwrite it when it closes. This is what makes your changes stick — without it Roblox resets them every time you quit.">
+            <ui:ToggleSwitch IsChecked="{Binding Locked, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <ui:Button Icon="Save24" Appearance="Primary" Content="Apply" Command="{Binding ApplyCommand}" />
+            <ui:Button Margin="8,0,0,0" Icon="ArrowSync24" Content="Reload" Command="{Binding ReloadCommand}" />
+            <ui:Button Margin="8,0,0,0" Icon="ArrowReset24" Content="Restore Roblox's settings" Command="{Binding ResetCommand}" />
+        </StackPanel>
+
+        <TextBlock Margin="2,10,0,0" FontSize="12" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Text="Restore puts back the copy taken before BeastStrap first changed anything. It's only available once you've applied a change." />
+    </StackPanel>
+</ui:UiPage>

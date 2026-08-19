@@ -1,0 +1,59 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+
+    <!--
+        Global glass control system. Merged LAST in App.xaml, so the implicit (keyless) styles here
+        supersede the WPF-UI defaults app-wide. Brand tokens are referenced via DynamicResource so
+        Utility.ThemeManager can re-skin every card / button / toggle live when the user edits the
+        palette. (BasedOn style refs stay StaticResource — those aren't re-themed.)
+    -->
+
+    <!-- ===== Glass CardControl (the OptionControl row + every direct CardControl) ===== -->
+    <Style x:Key="GlassCardControlStyle" TargetType="{x:Type ui:CardControl}" BasedOn="{StaticResource DefaultUiCardControlStyle}">
+        <Setter Property="Background" Value="{DynamicResource GlassFillBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
+        <Setter Property="Border.CornerRadius" Value="10" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrandCyanBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="{x:Type ui:CardControl}" BasedOn="{StaticResource GlassCardControlStyle}" />
+
+    <!-- ===== Glass CardAction (launcher actions, Mods page tiles) ===== -->
+    <Style x:Key="GlassCardActionStyle" TargetType="{x:Type ui:CardAction}" BasedOn="{StaticResource DefaultUiCardActionStyle}">
+        <Setter Property="Background" Value="{DynamicResource GlassFillBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
+        <Setter Property="Border.CornerRadius" Value="10" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrandCyanBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="{x:Type ui:CardAction}" BasedOn="{StaticResource GlassCardActionStyle}" />
+
+    <!-- ===== Primary buttons: brand gradient (live via the palette) ===== -->
+    <Style x:Key="BrandButtonStyle" TargetType="{x:Type ui:Button}" BasedOn="{StaticResource DefaultUiButtonStyle}">
+        <Setter Property="Border.CornerRadius" Value="8" />
+        <Style.Triggers>
+            <Trigger Property="Appearance" Value="Primary">
+                <Setter Property="Background" Value="{DynamicResource BrandGradientBrush}" />
+                <Setter Property="MouseOverBackground" Value="{DynamicResource BrandGradientBrightBrush}" />
+                <Setter Property="PressedBackground" Value="{DynamicResource BrandGradientBrush}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="MouseOverBorderBrush" Value="Transparent" />
+                <Setter Property="PressedBorderBrush" Value="Transparent" />
+                <Setter Property="Foreground" Value="#FF07131A" />
+                <Setter Property="PressedForeground" Value="#CC07131A" />
+                <Setter Property="IconForeground" Value="#FF07131A" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource BrandButtonStyle}" />
+
+</ResourceDictionary>

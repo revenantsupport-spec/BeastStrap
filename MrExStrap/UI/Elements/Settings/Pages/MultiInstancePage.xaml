@@ -1,0 +1,234 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.MultiInstancePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:BeastStrap.UI.Elements.Settings.Pages"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      xmlns:vmroot="clr-namespace:BeastStrap.UI.ViewModels"
+      d:DataContext="{d:DesignInstance Type=models:MultiInstanceViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="700" d:DesignWidth="800"
+      Title="MultiInstancePage"
+      Loaded="Page_Loaded"
+      Scrollable="True">
+
+    <ui:UiPage.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </ui:UiPage.Resources>
+
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Margin="0,0,0,8" FontSize="14" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="Save your Roblox accounts and launch one — or a whole group — at once. Every launch still runs on the LIVE channel with your FastFlags and mods." />
+
+        <!-- Safety / ToS note -->
+        <Border Margin="0,0,0,4" Padding="12,8" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,0,0,2">
+            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="Only add accounts you own. Logins are stored encrypted on this PC (Windows DPAPI) and never leave it. Running multiple accounts can break Roblox's rules and risk bans — use at your own risk." />
+        </Border>
+
+        <!-- Accounts -->
+        <Grid Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding AccountsHeader, Mode=OneWay}" />
+            </StackPanel>
+            <ui:Button Grid.Column="1" Icon="PersonAdd24" Content="Add account" Appearance="Primary"
+                       Command="{Binding AddAccountCommand, Mode=OneTime}" />
+        </Grid>
+
+        <TextBlock Margin="0,8,0,0" FontSize="12" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Text="No accounts yet. Click Add account to log in with your browser or paste a cookie."
+                   Visibility="{Binding HasNoAccounts, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+
+        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Accounts, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="0,4,0,0" Padding="10,8" CornerRadius="6"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                      ToolTip="Select for bulk launch" />
+                            <Border Grid.Column="1" Width="40" Height="40" CornerRadius="20" Margin="0,0,10,0" ClipToBounds="True"
+                                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                <Image Source="{Binding AvatarUrl, Mode=OneWay}" Stretch="UniformToFill"
+                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                            </Border>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DisplayLabel, Mode=OneWay}" FontSize="14"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding UsernameLine, Mode=OneWay}" FontSize="11"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <TextBlock Text="Version" VerticalAlignment="Center" FontSize="11" Margin="0,0,6,0"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    <ComboBox MinWidth="170" FontSize="12" Padding="8,2"
+                                              ItemsSource="{Binding DataContext.AvailableProfiles, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
+                                              DisplayMemberPath="Name" SelectedValuePath="Id"
+                                              SelectedValue="{Binding VersionProfileId, Mode=TwoWay}"
+                                              ToolTip="Which Versions Manager profile this account launches with. 'Default' uses your active version." />
+                                </StackPanel>
+                            </StackPanel>
+                            <ui:Button Grid.Column="3" Icon="Play24" Content="Launch" Margin="0,0,8,0"
+                                       Command="{Binding DataContext.LaunchAccountCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                       CommandParameter="{Binding}" />
+                            <ui:Button Grid.Column="4" Icon="Delete24" Appearance="Danger" ToolTip="Remove account"
+                                       Command="{Binding DataContext.RemoveAccountCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                       CommandParameter="{Binding}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Bulk launch -->
+        <ui:CardExpander Margin="0,16,0,0" IsExpanded="True">
+            <ui:CardExpander.Header>
+                <StackPanel>
+                    <TextBlock FontSize="14" Text="Bulk launch" />
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"
+                               Text="Launch the ticked accounts (or all of them) — to the home screen, or into a place. Add a Job ID to drop them all into the same server." />
+                </StackPanel>
+            </ui:CardExpander.Header>
+            <StackPanel>
+                <!-- Launch target: home vs a specific place -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ui:ToggleSwitch Grid.Column="0" VerticalAlignment="Top" Margin="0,2,0,0"
+                                     IsChecked="{Binding LaunchToHome, Mode=TwoWay}" />
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                        <TextBlock FontSize="13" Text="Open to the home page (no Place ID needed)" />
+                        <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                   Text="Launches each account straight to the Roblox home screen instead of a game — handy to sign in and clear any bot-check first. Turn this off to join a specific place with the Place ID below." />
+                    </StackPanel>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0" IsEnabled="{Binding IsGameLaunch, Mode=OneWay}">
+                        <TextBlock FontSize="12" Margin="0,0,0,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Place ID" />
+                        <TextBox Padding="8,5" Text="{Binding BulkPlaceId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0" IsEnabled="{Binding IsGameLaunch, Mode=OneWay}">
+                        <TextBlock FontSize="12" Margin="0,0,0,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Job ID (optional)" />
+                        <TextBox Padding="8,5" Text="{Binding BulkJobId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Width="120">
+                        <TextBlock FontSize="12" Margin="0,0,0,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Delay (seconds)" />
+                        <TextBox Padding="8,5" Text="{Binding BulkLaunchDelaySeconds, Mode=TwoWay}" ToolTip="Seconds between each launch. Minimum 2." />
+                    </StackPanel>
+                </Grid>
+
+                <WrapPanel Margin="0,12,0,0">
+                    <ui:Button Icon="Rocket24" Content="Launch selected" Appearance="Primary" Margin="0,0,8,8"
+                               Command="{Binding LaunchSelectedCommand, Mode=OneTime}"
+                               IsEnabled="{Binding IsNotLaunching, Mode=OneWay}" />
+                    <ui:Button Icon="Rocket24" Content="Launch all" Margin="0,0,8,8"
+                               Command="{Binding LaunchAllCommand, Mode=OneTime}"
+                               IsEnabled="{Binding IsNotLaunching, Mode=OneWay}" />
+                </WrapPanel>
+
+                <Border Margin="0,4,0,0" Padding="10,6" CornerRadius="4"
+                        Background="{DynamicResource ControlFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,0,0,2"
+                        Visibility="{Binding HasBulkStatus, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding BulkStatus, Mode=OneWay}" />
+                </Border>
+            </StackPanel>
+        </ui:CardExpander>
+
+        <!-- Multi-instance toggle -->
+        <controls:OptionControl Margin="0,16,0,0"
+            Header="Multi-instance (run more than one Roblox client)"
+            Description="Account and bulk launches from this tab already run on their own, so you don't need this turned on for them. Switch it on to also let your normal Roblox launches open alongside clients that are already running instead of closing them. It holds Roblox's single-instance lock. Same-user only, no admin needed.">
+            <ui:ToggleSwitch IsChecked="{Binding MultiInstanceEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- Running Roblox instances panel -->
+        <ui:CardExpander Margin="0,8,0,0" IsExpanded="False">
+            <ui:CardExpander.Header>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock FontSize="14" Text="{Binding RunningInstancesHeader, Mode=OneWay}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"
+                                   Text="Live list of RobloxPlayerBeta processes. Use the per-row kill button to close a specific instance." />
+                    </StackPanel>
+                    <ui:Button Grid.Column="1" MinWidth="100" Margin="0,0,16,0" Icon="ArrowClockwise24" Content="Refresh"
+                               Command="{Binding RefreshRunningInstancesCommand, Mode=OneTime}" />
+                </Grid>
+            </ui:CardExpander.Header>
+            <StackPanel>
+                <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="No Roblox processes are currently running."
+                           Visibility="{Binding HasNoRunningInstances, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+                <ItemsControl ItemsSource="{Binding RunningInstances, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Pid}" FontFamily="Consolas" FontSize="12"
+                                           VerticalAlignment="Center" MinWidth="60" />
+                                <TextBlock Grid.Column="1" Text="{Binding Uptime}" FontSize="12" Margin="12,0,0,0"
+                                           VerticalAlignment="Center" MinWidth="80"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Grid.Column="2" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="80"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                    <Run Text="{Binding MemoryMb, Mode=OneWay}" />
+                                    <Run Text=" MB" />
+                                </TextBlock>
+                                <TextBlock Grid.Column="3" Text="{Binding WindowTitle}" FontSize="12" Margin="12,0,8,0"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                <ui:Button Grid.Column="4" MinWidth="70" Icon="Dismiss24" Content="Kill" Appearance="Danger"
+                                           Command="{Binding DataContext.KillInstanceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                           CommandParameter="{Binding Pid}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ui:CardExpander>
+
+        <TextBlock Margin="0,12,0,0" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap">
+            <Run>Multi-account management and bulk launch adapted from</Run>
+            <Hyperlink Command="vmroot:GlobalViewModel.OpenWebpageCommand"
+                       CommandParameter="https://gitlab.com/centerepic/robloxmanager">sasha / centerepic's robloxmanager</Hyperlink>
+            <Run>(MIT).</Run>
+        </TextBlock>
+    </StackPanel>
+</ui:UiPage>

@@ -1,0 +1,142 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        BeastStrap brand palette, taken from the logo: electric ice-blue that fades to a colder
+        sky blue, with soft violet highlights, on a deep technical-navy background. The control
+        accent (toggles, buttons, links) is applied in code via Wpf.Ui.Appearance.Accent.Apply(BrandAccent) in
+        WpfUiWindow.ApplyTheme. This dictionary is merged LAST in App.xaml, so anything defined
+        here overrides the WPF-UI base tokens app-wide. The glass control styles live in the
+        Glass.xaml dictionary that is merged right after this one.
+    -->
+
+    <Color x:Key="BrandCyanColor">#FF38BDF8</Color>
+    <Color x:Key="BrandGreenColor">#FF7DD3FC</Color>
+    <Color x:Key="BrandPurpleColor">#FFA78BFA</Color>
+    <Color x:Key="BrandInkColor">#FF070C16</Color>
+    <Color x:Key="BrandSurfaceColor">#FF0E1624</Color>
+    <Color x:Key="BrandHairlineColor">#FF1B2940</Color>
+
+    <SolidColorBrush x:Key="BrandCyanBrush" Color="{StaticResource BrandCyanColor}" />
+    <SolidColorBrush x:Key="BrandGreenBrush" Color="{StaticResource BrandGreenColor}" />
+    <SolidColorBrush x:Key="BrandPurpleBrush" Color="{StaticResource BrandPurpleColor}" />
+    <SolidColorBrush x:Key="BrandInkBrush" Color="{StaticResource BrandInkColor}" />
+    <SolidColorBrush x:Key="BrandSurfaceBrush" Color="{StaticResource BrandSurfaceColor}" />
+    <SolidColorBrush x:Key="BrandHairlineBrush" Color="{StaticResource BrandHairlineColor}" />
+
+    <!--
+        Deep-navy surface retint. Override the WPF-UI base surface tokens so the WHOLE app reads
+        as one cohesive deep technical-navy surface instead of stock grey (#202020). Cards then
+        sit on this as translucent glass. Dark-only, so plain (non-tracking) brushes are fine.
+    -->
+    <Color x:Key="ApplicationBackgroundColor">#FF070C16</Color>
+    <SolidColorBrush x:Key="ApplicationBackgroundBrush" Color="#FF070C16" />
+
+    <!-- ===== Glass tokens ===== -->
+    <!-- Translucent white over the deep ink reads as cool frosted glass. -->
+    <SolidColorBrush x:Key="GlassFillBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="GlassFillHoverBrush" Color="#1FFFFFFF" />
+    <SolidColorBrush x:Key="GlassBorderBrush" Color="#2EFFFFFF" />
+    <!-- Faint blue-tinted glass for hero surfaces. -->
+    <SolidColorBrush x:Key="GlassTintBrush" Color="#1438BDF8" />
+    <!-- Top-light luminous edge for the frosted look. -->
+    <LinearGradientBrush x:Key="GlassEdgeBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#33FFFFFF" Offset="0" />
+        <GradientStop Color="#0AFFFFFF" Offset="0.5" />
+        <GradientStop Color="#00FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Signature electric-blue -> ice gradient: wordmark underline, primary CTA, selected-nav accent. -->
+    <LinearGradientBrush x:Key="BrandGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{StaticResource BrandCyanColor}" Offset="0" />
+        <GradientStop Color="{StaticResource BrandGreenColor}" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Brighter variant for the hovered state of the primary CTA. -->
+    <LinearGradientBrush x:Key="BrandGradientBrightBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#FF7DD4F9" Offset="0" />
+        <GradientStop Color="#FFB3E5FD" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Violet -> blue -> ice diagonal, for larger hero surfaces (Home header, installer). -->
+    <LinearGradientBrush x:Key="BrandGradientTriBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{StaticResource BrandPurpleColor}" Offset="0" />
+        <GradientStop Color="{StaticResource BrandCyanColor}" Offset="0.55" />
+        <GradientStop Color="{StaticResource BrandGreenColor}" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Monospace family for technical readouts: version GUIDs, fast-flag names, channel/status. -->
+    <FontFamily x:Key="BrandMonoFont">Consolas</FontFamily>
+
+    <!-- Ice-blue neon glows for the logo, CTAs and hovered accent edges. -->
+    <!--
+        DELIBERATELY NOT DEFINED HERE. ThemeManager.Apply is the sole authority for
+        BrandGlowEffect / BrandGlowSoft / BrandGlowStrong, and it writes null into
+        Application.Current.Resources when the glow toggle is off. WPF treats a null
+        resource value as "not found" and continues searching the merged dictionaries —
+        so a fallback definition here (or anywhere else) silently defeats the off-switch.
+        If you add BrandGlow* back to this dictionary, "glow off" stops working.
+    -->
+    <!-- Soft dark drop shadow for lifting hero cards off the deep ink (used sparingly). -->
+    <DropShadowEffect x:Key="CardShadowEffect" Color="#FF000000" BlurRadius="26" ShadowDepth="3" Direction="270" Opacity="0.5" />
+
+    <!-- ===== Type scale ===== -->
+    <!-- Rubik (light, elegant) for large display text; the default Segoe UI for everything else. -->
+    <Style x:Key="DisplayText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Rubik}" />
+        <Setter Property="FontSize" Value="30" />
+        <Setter Property="FontWeight" Value="Light" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style x:Key="TitleText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style x:Key="SubtitleText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style x:Key="BodyText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="CaptionText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+
+    <!-- Uppercase, dimmed group label for the sectioned navigation and page section headers. -->
+    <Style x:Key="BrandSectionHeader" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="Margin" Value="6,14,0,4" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+    </Style>
+
+    <!-- Monospace technical readout in brand cyan. -->
+    <Style x:Key="BrandMono" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource BrandMonoFont}" />
+        <Setter Property="Foreground" Value="{DynamicResource BrandCyanBrush}" />
+    </Style>
+
+    <!-- Elevated glass tile for the Home dashboard status cards; lights up cyan on hover. -->
+    <Style x:Key="HomeTile" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource GlassFillBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="16,14" />
+        <Setter Property="Margin" Value="6" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource BrandCyanBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+</ResourceDictionary>

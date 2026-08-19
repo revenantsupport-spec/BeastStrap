@@ -1,0 +1,63 @@
+<base:WpfUiWindow x:Class="BeastStrap.UI.Elements.Dialogs.VipServerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:base="clr-namespace:BeastStrap.UI.Elements.Base"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        mc:Ignorable="d"
+        Width="640"
+        Height="720"
+        Title="Pick a VIP server"
+        Background="{ui:ThemeResource ApplicationBackgroundBrush}"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Padding="8" x:Name="RootTitleBar"
+                     ShowMinimize="False" ShowMaximize="False" CanMaximize="False"
+                     KeyboardNavigation.TabNavigation="None"
+                     Title="Pick a VIP server" />
+
+        <StackPanel Grid.Row="1" Margin="16,8,16,12">
+            <TextBlock x:Name="HeaderText"
+                       Text="Pick a free VIP server, or skip to launch normally."
+                       FontSize="14" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            <TextBlock Margin="0,4,0,0"
+                       Text="Servers are shared by other users on rbxservers.xyz. We don't run that site or vet servers."
+                       FontSize="11" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Margin="16,0,16,12" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="1">
+            <Grid ClipToBounds="True">
+                <wv2:WebView2 x:Name="WebView" />
+                <TextBlock x:Name="StatusOverlay"
+                           Text="Loading servers..."
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="3" Padding="14,10"
+                Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button x:Name="SkipButton" MinWidth="100" Content="Skip"
+                           Appearance="Primary" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</base:WpfUiWindow>

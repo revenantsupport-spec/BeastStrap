@@ -1,0 +1,306 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.VersionPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      d:DataContext="{d:DesignInstance Type=models:VersionViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="700" d:DesignWidth="800"
+      Title="VersionPage"
+      Scrollable="True">
+
+    <ui:UiPage.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </ui:UiPage.Resources>
+
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Margin="0,0,0,8"
+                   Text="Pin the Roblox client to a specific build instead of downloading the latest. The channel is always forced to LIVE regardless of the build you pin."
+                   FontSize="14" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+        <!-- Always-visible "switch back to latest" banner — shown whenever a custom version is in effect -->
+        <Border Margin="0,0,0,12" Padding="14,12" CornerRadius="6"
+                Background="#403B82F6" BorderBrush="#3B82F6" BorderThickness="0,0,0,2"
+                Visibility="{Binding ShowDowngradeActiveBanner, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock FontWeight="SemiBold" FontSize="14" Text="You're using a custom Roblox build" />
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,3,0,0"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="Roblox launches will use the version pinned below instead of the latest. Switch back any time to auto-track LIVE updates again." />
+                </StackPanel>
+                <ui:Button Grid.Column="1" Margin="12,0,0,0" MinWidth="180"
+                           Content="Switch back to latest" Icon="ArrowReset24"
+                           Appearance="Primary"
+                           Command="{Binding ResetCommand, Mode=OneTime}" />
+            </Grid>
+        </Border>
+
+        <!-- New-LIVE-version banner: shown when user is pinned and Roblox has a newer LIVE hash they haven't dismissed -->
+        <Border Margin="0,0,0,12" Padding="12,10" CornerRadius="4"
+                Background="#402EA84A" BorderBrush="#2EA84A" BorderThickness="0,0,0,2"
+                Visibility="{Binding ShowLiveUpdateBanner, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock FontWeight="SemiBold" FontSize="13">
+                        <Run>Roblox shipped a new LIVE build.</Run>
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                        <Run>You're pinned to an older build. Update your pin to the latest, or dismiss this to stay where you are.</Run>
+                    </TextBlock>
+                </StackPanel>
+                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Update pin"
+                           Appearance="Primary"
+                           Command="{Binding UpdatePinToLiveCommand, Mode=OneTime}" />
+                <ui:Button Grid.Column="2" Margin="8,0,0,0" Content="Dismiss"
+                           Command="{Binding DismissLiveBannerCommand, Mode=OneTime}" />
+            </Grid>
+        </Border>
+
+        <Border Margin="0,4,0,16" Padding="12,8" Background="#40E0A322" BorderBrush="#E0A322" BorderThickness="0,0,0,2" CornerRadius="4">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                <Run FontWeight="SemiBold">Warning: </Run>
+                <Run>Old Roblox builds may fail to join public games due to minimum-version enforcement, and using old clients can violate Roblox TOS. Use at your own risk.</Run>
+            </TextBlock>
+        </Border>
+
+        <!-- Latest LIVE version card (auto-detected from Roblox CDN) -->
+        <Border Margin="0,0,0,16" Padding="14" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Text="Latest LIVE version" FontWeight="SemiBold" FontSize="15" />
+                <TextBlock Margin="0,2,0,10" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="Auto-detected directly from Roblox. No third-party services." />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Padding="10,7" MinHeight="34" CornerRadius="4"
+                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid>
+                            <TextBlock Text="Fetching current LIVE version..." FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsFetchingLive, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+                            <TextBlock Text="{Binding LiveHash, Mode=OneWay}" FontFamily="Consolas" FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsNotFetchingLive, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="ArrowClockwise24" Content="Refresh"
+                               Command="{Binding FetchLiveCommand, Mode=OneTime}"
+                               IsEnabled="{Binding IsNotFetchingLive, Mode=OneWay}" />
+                    <ui:Button Grid.Column="2" Margin="8,0,0,0" Icon="Copy24" ToolTip="Copy hash to clipboard"
+                               Command="{Binding CopyLiveHashCommand, Mode=OneTime}"
+                               IsEnabled="{Binding HasLiveHash, Mode=OneWay}" />
+                    <ui:Button Grid.Column="3" Margin="8,0,0,0" Icon="Pin24" Content="Pin this version"
+                               Appearance="Primary"
+                               Command="{Binding PinLiveCommand, Mode=OneTime}"
+                               IsEnabled="{Binding HasLiveHash, Mode=OneWay}" />
+                </Grid>
+
+                <!-- Metadata row: Roblox version + when it was deployed -->
+                <Grid Margin="0,8,0,0"
+                      Visibility="{Binding HasLiveMeta, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding LiveVersion, Mode=OneWay}" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding LiveReleasedText, Mode=OneWay}" FontSize="12"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               ToolTip="CDN uploaded = when Roblox put the package files on the CDN (can be hours before production). First seen LIVE = when this install first saw Roblox flip the LIVE pointer to this hash — a locally-true 'when did it release' signal." />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Executor-list data source: weao.xyz (default) vs the robloxscripts.com mirror. -->
+        <controls:OptionControl Margin="0,0,0,16"
+            Header="Use the robloxscripts.com API instead of weao.xyz"
+            Description="The executor list below normally comes from weao.xyz. Turn this on to pull it from robloxscripts.com first instead, which helps if weao.xyz is blocked on your network. The other one is still used as a backup either way.">
+            <ui:ToggleSwitch IsChecked="{Binding PreferRobloxScriptsApi, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- Match-your-executor card (WEAO-powered dropdown) -->
+        <Border Margin="0,0,0,16" Padding="14" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Text="Match your executor/exploit" FontWeight="SemiBold" FontSize="15" />
+                <TextBlock Margin="0,2,0,10" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="If Roblox updated but your executor hasn't, pick it here to pin the exact Roblox build it still supports." />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding Exploits, Mode=OneWay}"
+                              SelectedItem="{Binding SelectedExploit, Mode=TwoWay}"
+                              IsEnabled="{Binding IsNotLoadingExploits, Mode=OneWay}"
+                              HorizontalAlignment="Stretch"
+                              MaxDropDownHeight="240"
+                              PreviewMouseWheel="ComboBox_PreviewMouseWheel">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="#E0A322" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UpdateStatus}" Value="True">
+                                                        <Setter Property="Fill" Value="#2EA84A" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding RbxVersion}" FontFamily="Consolas" FontSize="11"
+                                               VerticalAlignment="Center" Margin="12,0,0,0"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="ArrowClockwise24" Content="Refresh"
+                               Command="{Binding RefreshExploitsCommand, Mode=OneTime}"
+                               IsEnabled="{Binding IsNotLoadingExploits, Mode=OneWay}" />
+                </Grid>
+
+                <!-- Inline failure banner — surfaces WHY the dropdown is empty so users on
+                     blocked networks (school/corp/ISP/DNS filter/AV TLS) know what to do
+                     instead of staring at an empty list. -->
+                <Border Margin="0,10,0,0" Padding="12,10" CornerRadius="4"
+                        Background="#40E0A322" BorderBrush="#E0A322" BorderThickness="0,0,0,2"
+                        Visibility="{Binding HasExploitsLoadError, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="13" Text="Executor list couldn't load" />
+                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                   Text="{Binding ExploitsLoadError, Mode=OneWay}" />
+                        <ui:Button Margin="0,10,0,0" Icon="Clipboard24" Content="Copy diagnostic info"
+                                   HorizontalAlignment="Left"
+                                   Command="{Binding CopyDiagnosticsCommand, Mode=OneTime}"
+                                   ToolTip="Builds a short report (app version, OS, fresh weao.xyz probe result) and puts it on your clipboard so you can paste it into a bug report." />
+                    </StackPanel>
+                </Border>
+
+                <!-- Backup-source note — shown only when weao.xyz was unreachable and the
+                     robloxscripts.com mirror supplied the list instead. -->
+                <TextBlock Margin="0,8,0,0" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Visibility="{Binding HasExploitsSourceNote, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}"
+                           Text="{Binding ExploitsSourceNote, Mode=OneWay}" />
+
+                <TextBlock Margin="0,8,0,0" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Text="Green dot = executor is up to date for the Roblox version it reports. Amber = the executor is behind the latest Roblox — pinning to its version still works, but the executor itself may be unstable." TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- Manual override toggle -->
+        <controls:OptionControl
+            Header="Use a specific Roblox version"
+            Description="When enabled, the pinned version below is used on every launch instead of the latest build.">
+            <ui:ToggleSwitch IsChecked="{Binding UseCustomVersion, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <TextBlock Margin="0,16,0,4" Text="Version hash" FontWeight="Medium" FontSize="14" />
+        <TextBlock Margin="0,0,0,8" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+            <Run>Paste a hash of the form</Run>
+            <Run FontFamily="Consolas">version-xxxxxxxxxxxxxxxx</Run>
+            <Run>(16 hex chars), or use the options above to fill it in. Click Verify to confirm the build still exists on CDN.</Run>
+        </TextBlock>
+
+        <!-- Recent hashes dropdown (only shown if we have any) -->
+        <Grid Margin="0,0,0,8"
+              Visibility="{Binding HasRecentHashes, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Recent:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding RecentHashes, Mode=OneWay}"
+                      SelectedItem="{Binding SelectedRecentHash, Mode=TwoWay}"
+                      FontFamily="Consolas" FontSize="12"
+                      HorizontalAlignment="Stretch"
+                      MaxDropDownHeight="240"
+                      PreviewMouseWheel="ComboBox_PreviewMouseWheel" />
+        </Grid>
+
+        <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ui:TextBox Grid.Column="0"
+                        PlaceholderText="version-abcdef0123456789"
+                        FontFamily="Consolas"
+                        Text="{Binding CustomVersionGuid, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Verify"
+                       Command="{Binding VerifyCommand, Mode=OneTime}"
+                       IsEnabled="{Binding IsNotVerifying, Mode=OneWay}" />
+            <ui:Button Grid.Column="2" Margin="8,0,0,0" Content="Reset to latest"
+                       Appearance="Danger"
+                       Command="{Binding ResetCommand, Mode=OneTime}" />
+        </Grid>
+
+        <Border Padding="10,6" CornerRadius="4" Background="{DynamicResource ControlFillColorDefaultBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusMessage, Mode=OneWay}"
+                           Foreground="{Binding StatusColor, Mode=OneWay}"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+                <ui:Hyperlink Grid.Column="1"
+                              Margin="12,0,0,0"
+                              Content="Reset to latest"
+                              FontSize="12"
+                              VerticalAlignment="Center"
+                              Visibility="{Binding ShowResetAction, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}"
+                              Command="{Binding ResetCommand, Mode=OneTime}" />
+            </Grid>
+        </Border>
+    </StackPanel>
+</ui:UiPage>

@@ -1,0 +1,24 @@
+<UserControl x:Class="BeastStrap.UI.Elements.Controls.WallpaperBackground"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             IsHitTestVisible="False"
+             d:DesignHeight="480" d:DesignWidth="820">
+    <!--
+        User wallpaper backdrop for hero surfaces (settings window, launch menu). Loaded and made
+        visible by Utility.ThemeManager.ApplyWallpaper when the user picks an image — otherwise
+        collapsed so the deep ink + aurora show through. Renders the image full-bleed and dims it
+        with a hairline-tinted scrim so the glass content on top stays readable. Not hit-testable.
+    -->
+    <Grid ClipToBounds="True">
+        <Image x:Name="WallpaperImage"
+               Stretch="UniformToFill"
+               RenderOptions.BitmapScalingMode="HighQuality"
+               Source="{DynamicResource WallpaperImageSource}"
+               Visibility="{DynamicResource WallpaperVisibility}"
+               Opacity="{DynamicResource WallpaperOpacity}" />
+        <Border Background="{DynamicResource BrandInkBrush}" Opacity="0.45" />
+    </Grid>
+</UserControl>

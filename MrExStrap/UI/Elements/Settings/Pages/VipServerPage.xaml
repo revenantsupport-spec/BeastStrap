@@ -1,0 +1,51 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.VipServerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      d:DataContext="{d:DesignInstance Type=models:VipServerViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="500" d:DesignWidth="800"
+      Title="VipServerPage"
+      Scrollable="True">
+
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Margin="0,0,0,12"
+                   Text="Before you join a Roblox game, BeastStrap can show you a list of free shared VIP servers from rbxservers.xyz. Pick one to land in that server, or skip to launch normally."
+                   FontSize="14" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+        <controls:OptionControl
+            Header="Show VIP server picker before launching games"
+            Description="When enabled, a small dialog opens just before Roblox starts. It only appears for game launches that include a place ID — direct settings/Studio launches are unaffected.">
+            <ui:ToggleSwitch IsChecked="{Binding VipServerPromptEnabled, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <Border Margin="0,16,0,0" Padding="12,10" CornerRadius="4"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,2">
+            <StackPanel>
+                <TextBlock Text="Heads up" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="Servers in the list are uploaded by other users on rbxservers.xyz. We don't run that site and we don't vet servers. Roblox doesn't sponsor this — use it like any third-party tool. If a server is full or expired, the picker will just fail to join and you can pick another or skip." />
+            </StackPanel>
+        </Border>
+
+        <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="4"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,2">
+            <StackPanel>
+                <TextBlock Text="How it works" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="The picker is just a small embedded view of rbxservers.xyz/embedded/game/{your place id}. When you click a server, BeastStrap reads the access code from the link and joins that server. No data leaves your machine beyond the page load itself." />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</ui:UiPage>

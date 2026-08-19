@@ -1,0 +1,215 @@
+<base:WpfUiWindow
+    x:Class="BeastStrap.UI.Elements.Bootstrapper.FluentDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:base="clr-namespace:BeastStrap.UI.Elements.Base"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:resources="clr-namespace:BeastStrap.Resources"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vms="clr-namespace:BeastStrap.UI.ViewModels.Bootstrapper"
+    Width="500"
+    Height="380"
+    MinHeight="0"
+    d:DataContext="{d:DesignInstance vms:FluentDialogViewModel,
+                                     IsDesignTimeCreatable=True}"
+    Background="{ui:ThemeResource ApplicationBackgroundBrush}"
+    Closing="UiWindow_Closing"
+    ExtendsContentIntoTitleBar="True"
+    ResizeMode="NoResize"
+    WindowBackdropType="{Binding Path=WindowBackdropType, Mode=OneTime}"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None"
+    mc:Ignorable="d">
+
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo ProgressState="{Binding Path=TaskbarProgressState}" ProgressValue="{Binding Path=TaskbarProgressValue}" />
+    </Window.TaskbarItemInfo>
+
+    <!--  Background is for Aero theme only  -->
+    <Grid Background="{Binding Path=BackgroundColourBrush, Mode=OneTime}">
+        <!--  Allow for drag  -->
+        <ui:TitleBar
+            VerticalAlignment="Top"
+            CanMaximize="False"
+            ShowClose="False"
+            ShowMaximize="False"
+            ShowMinimize="False" />
+
+        <Grid x:Name="BootSequence" Margin="32,16" Opacity="0" RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform ScaleX="0.96" ScaleY="0.96" />
+            </Grid.RenderTransform>
+            <Grid.Triggers>
+                <!-- Boot sequence: the dialog fades in, lifts, and the icon pops while the
+                     progress bar starts sweeping. Runs once on load. -->
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="BootSequence"
+                                Storyboard.TargetProperty="Opacity"
+                                From="0"
+                                To="1"
+                                Duration="00:00:00.350" />
+                            <DoubleAnimation
+                                Storyboard.TargetName="BootSequence"
+                                Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                From="0.96"
+                                To="1.0"
+                                Duration="00:00:00.350">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation
+                                Storyboard.TargetName="BootSequence"
+                                Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                From="0.96"
+                                To="1.0"
+                                Duration="00:00:00.350">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation
+                                Storyboard.TargetName="BootIcon"
+                                Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                From="0.6"
+                                To="1.0"
+                                Duration="00:00:00.450">
+                                <DoubleAnimation.EasingFunction>
+                                    <ElasticEase EasingMode="EaseOut" Oscillations="1" Springiness="6" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation
+                                Storyboard.TargetName="BootIcon"
+                                Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                From="0.6"
+                                To="1.0"
+                                Duration="00:00:00.450">
+                                <DoubleAnimation.EasingFunction>
+                                    <ElasticEase EasingMode="EaseOut" Oscillations="1" Springiness="6" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation
+                                Storyboard.TargetName="BootIcon"
+                                Storyboard.TargetProperty="Opacity"
+                                From="0"
+                                To="1"
+                                Duration="00:00:00.300" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Grid.Triggers>
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Row 0: badge row (CHANNEL: LIVE + optional DOWNGRADED) -->
+            <StackPanel Grid.Row="0" Margin="0,28,0,0" Orientation="Horizontal" HorizontalAlignment="Center">
+                <Border Padding="10,3" Background="#1E6B2E" CornerRadius="10">
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="White" Text="CHANNEL: LIVE (locked)" />
+                </Border>
+                <Border Margin="6,0,0,0" Padding="10,3" Background="#C46B15" CornerRadius="10"
+                        Visibility="{Binding DowngradedBadgeVisibility, Mode=OneWay}">
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="White" Text="DOWNGRADED" />
+                </Border>
+            </StackPanel>
+
+            <!-- Row 1: icon -->
+            <Image
+                x:Name="BootIcon"
+                Grid.Row="1"
+                Width="80"
+                Height="80"
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                RenderOptions.BitmapScalingMode="HighQuality"
+                RenderTransformOrigin="0.5,0.5"
+                Source="{Binding Icon, Mode=OneWay}">
+                <Image.RenderTransform>
+                    <ScaleTransform />
+                </Image.RenderTransform>
+            </Image>
+
+            <!-- Row 2: main status text -->
+            <TextBlock
+                Grid.Row="2"
+                Margin="0,0,0,4"
+                HorizontalAlignment="Center"
+                FontSize="18"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                Text="{Binding Message, Mode=OneWay}"
+                TextWrapping="Wrap" />
+
+            <!-- Row 3: Place info (only when launching into a specific game) -->
+            <TextBlock
+                Grid.Row="3"
+                Margin="0,0,0,2"
+                HorizontalAlignment="Center"
+                FontSize="12"
+                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                Text="{Binding PlaceInfoText, Mode=OneWay}"
+                TextWrapping="Wrap"
+                Visibility="{Binding PlaceInfoVisibility, Mode=OneWay}" />
+
+            <!-- Row 4: Roblox version + hash (resolved from CDN) -->
+            <TextBlock
+                Grid.Row="4"
+                Margin="0,0,0,8"
+                HorizontalAlignment="Center"
+                FontSize="11"
+                FontFamily="Consolas"
+                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                Text="{Binding VersionInfoText, Mode=OneWay}"
+                TextWrapping="Wrap"
+                TextAlignment="Center"
+                Visibility="{Binding VersionInfoVisibility, Mode=OneWay}" />
+
+            <!-- Row 5: progress bar -->
+            <ProgressBar
+                Grid.Row="5"
+                Margin="0,0,0,2"
+                IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}"
+                Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                Value="{Binding ProgressValue, Mode=OneWay}" />
+
+            <!-- Row 6: download size + speed/ETA (only while downloading) -->
+            <StackPanel Grid.Row="6" Margin="0,0,0,16" HorizontalAlignment="Right">
+                <TextBlock
+                    HorizontalAlignment="Right"
+                    FontSize="11"
+                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                    Text="{Binding DownloadSizeText, Mode=OneWay}"
+                    Visibility="{Binding DownloadSizeVisibility, Mode=OneWay}" />
+                <TextBlock
+                    HorizontalAlignment="Right"
+                    FontSize="11"
+                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                    Text="{Binding DownloadSpeedText, Mode=OneWay}"
+                    Visibility="{Binding DownloadSpeedVisibility, Mode=OneWay}" />
+            </StackPanel>
+
+            <!-- Row 7: cancel -->
+            <Button
+                Grid.Row="7"
+                Width="120"
+                Padding="4"
+                HorizontalAlignment="Center"
+                Command="{Binding CancelInstallCommand}"
+                Content="{x:Static resources:Strings.Common_Cancel}"
+                FontSize="14"
+                IsEnabled="{Binding CancelEnabled, Mode=OneWay}" />
+        </Grid>
+    </Grid>
+</base:WpfUiWindow>

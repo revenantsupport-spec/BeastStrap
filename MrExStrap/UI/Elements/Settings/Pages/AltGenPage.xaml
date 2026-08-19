@@ -1,0 +1,210 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.AltGenPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:BeastStrap.UI.Elements.Settings.Pages"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      xmlns:vmroot="clr-namespace:BeastStrap.UI.ViewModels"
+      d:DataContext="{d:DesignInstance Type=models:AltGenViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="700" d:DesignWidth="800"
+      Title="AltGenPage"
+      Scrollable="True">
+
+    <ui:UiPage.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+        <!-- Reveal-on-hover: the real value shows only while the cursor is over the cell; otherwise
+             a fixed dot mask is shown. Both styles read the cell's (wrapping Grid) IsMouseOver. -->
+        <Style x:Key="RevealRealStyle" TargetType="TextBox">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="RevealMaskStyle" TargetType="TextBox">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </ui:UiPage.Resources>
+
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Margin="0,0,0,8" FontSize="14" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="Generate Roblox alt accounts through BloxGen using your own API key. Accounts are created and billed by BloxGen, not BeastStrap." />
+
+        <!-- Affiliate banner -->
+        <Border Margin="0,0,0,4" Padding="14,12" CornerRadius="8"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource AccentFillColorDefaultBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="Need a BloxGen API key?" />
+                    <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="Make a free BloxGen account, grab your API key from the dashboard, then paste it below." />
+                </StackPanel>
+                <ui:Button Grid.Column="1" VerticalAlignment="Center" Icon="Link24" Appearance="Primary" Content="Get a free key"
+                           Command="vmroot:GlobalViewModel.OpenWebpageCommand"
+                           CommandParameter="https://bloxgen.net/@osoloco98628" />
+            </Grid>
+        </Border>
+
+        <!-- Safety / ToS note -->
+        <Border Margin="0,8,0,0" Padding="12,8" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,0,0,2">
+            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="Generated accounts come from BloxGen and are charged against your BloxGen balance. Use at your own risk — generating or using alt accounts can break Roblox's rules and risk bans. Your API key is stored only on this PC." />
+        </Border>
+
+        <!-- Account type -->
+        <TextBlock Margin="0,16,0,2" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Account type" />
+        <ComboBox HorizontalAlignment="Left" MinWidth="300" Padding="8,4"
+                  ItemsSource="{Binding AltTypes, Mode=OneTime}"
+                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                  SelectedValue="{Binding SelectedType, Mode=TwoWay}"
+                  ToolTip="Aged accounts need Premium and dumps need Ultra — your BloxGen role decides what you can generate." />
+
+        <!-- API key + generate -->
+        <TextBlock Margin="0,12,0,2" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Your BloxGen API key" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0" Padding="8,6" FontFamily="Consolas"
+                     Text="{Binding ApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Stored locally on this PC only. Never shared." />
+            <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="Save24" Content="Save key"
+                       Command="{Binding SaveKeyCommand, Mode=OneTime}"
+                       ToolTip="Save your key to settings so it's remembered next time." />
+            <ui:Button Grid.Column="2" Margin="8,0,0,0" Icon="PersonAdd24" Content="Generate alt" Appearance="Primary"
+                       Command="{Binding GenerateCommand, Mode=OneTime}"
+                       IsEnabled="{Binding CanGenerate, Mode=OneWay}" />
+        </Grid>
+
+        <!-- Status -->
+        <Border Margin="0,12,0,0" Padding="10,8" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,0,0,2"
+                Visibility="{Binding HasStatus, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding Status, Mode=OneWay}" />
+        </Border>
+
+        <!-- Shown when BloxGen requires accepting the rules first -->
+        <ui:Button Margin="0,8,0,0" Icon="CheckmarkCircle24" Appearance="Primary" Content="Agree to BloxGen rules"
+                   Command="vmroot:GlobalViewModel.OpenWebpageCommand"
+                   CommandParameter="https://bloxgen.net/@osoloco98628"
+                   Visibility="{Binding NeedsRulesAgreement, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+
+        <!-- Live cooldown countdown + premium upsell (shown on a BloxGen 429 cooldown) -->
+        <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="8"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource AccentFillColorDefaultBrush}" BorderThickness="1"
+                Visibility="{Binding OnCooldown, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <StackPanel>
+                <TextBlock FontSize="15" FontWeight="SemiBold" Text="{Binding CooldownText, Mode=OneWay}" />
+                <TextBlock Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="Don't want to wait? The free tier is 20 generations a day. Lifetime Premium ($4.99) bumps you to 50 a day, and Ultra ($9.99) gives you 100 a day." />
+                <ui:Button Margin="0,10,0,0" Icon="Star24" Appearance="Primary" Content="Get more generations"
+                           Command="vmroot:GlobalViewModel.OpenWebpageCommand"
+                           CommandParameter="https://bloxgen.net/@osoloco98628" />
+            </StackPanel>
+        </Border>
+
+        <!-- Result -->
+        <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="8"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Border Width="44" Height="44" CornerRadius="22" Margin="0,0,10,0" ClipToBounds="True"
+                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                            Visibility="{Binding HasAvatar, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                        <Image Source="{Binding AvatarUrl, Mode=OneWay}" Stretch="UniformToFill"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="Latest generated account" />
+                        <TextBlock FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                   Visibility="{Binding HasUserId, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                            <Run Text="User ID:" />
+                            <Run Text="{Binding UserId, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Username" />
+                    <TextBox Grid.Column="1" Padding="6,4" IsReadOnly="True" FontFamily="Consolas" Text="{Binding Username, Mode=OneWay}" />
+                    <ui:Button Grid.Column="2" Margin="6,0,0,0" Icon="Copy24" ToolTip="Copy username"
+                               Command="{Binding CopyUsernameCommand, Mode=OneTime}" />
+                </Grid>
+
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Password" />
+                    <Grid Grid.Column="1" ToolTip="Hover to reveal">
+                        <TextBox Style="{StaticResource RevealRealStyle}" Padding="6,4" IsReadOnly="True" FontFamily="Consolas" Text="{Binding Password, Mode=OneWay}" />
+                        <TextBox Style="{StaticResource RevealMaskStyle}" Padding="6,4" IsReadOnly="True" FontFamily="Consolas" Focusable="False" Text="••••••••••••" />
+                    </Grid>
+                    <ui:Button Grid.Column="2" Margin="6,0,0,0" Icon="Copy24" ToolTip="Copy password"
+                               Command="{Binding CopyPasswordCommand, Mode=OneTime}" />
+                </Grid>
+
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text=".ROBLOSECURITY" />
+                    <Grid Grid.Column="1" ToolTip="Hover to reveal">
+                        <TextBox Style="{StaticResource RevealRealStyle}" Padding="6,4" IsReadOnly="True" FontFamily="Consolas" Text="{Binding Cookie, Mode=OneWay}" />
+                        <TextBox Style="{StaticResource RevealMaskStyle}" Padding="6,4" IsReadOnly="True" FontFamily="Consolas" Focusable="False" Text="••••••••••••" />
+                    </Grid>
+                    <ui:Button Grid.Column="2" Margin="6,0,0,0" Icon="Copy24" ToolTip="Copy cookie"
+                               Command="{Binding CopyCookieCommand, Mode=OneTime}" />
+                </Grid>
+
+                <ui:Button Margin="0,12,0,0" Icon="PeopleTeam24" Content="Save to Multi Instance" Appearance="Primary"
+                           Command="{Binding SaveToMultiInstanceCommand, Mode=OneTime}"
+                           IsEnabled="{Binding CanGenerate, Mode=OneWay}" />
+
+                <TextBlock Margin="0,8,0,0" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Text="Saved accounts show up on the Multi Instance tab, where you can launch one — or tick several and launch them all at once." />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Margin="0,12,0,0" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap">
+            <Run>Powered by</Run>
+            <Hyperlink Command="vmroot:GlobalViewModel.OpenWebpageCommand"
+                       CommandParameter="https://bloxgen.net/@osoloco98628">BloxGen</Hyperlink>
+            <Run>— accounts and billing are handled by BloxGen, not BeastStrap.</Run>
+        </TextBlock>
+    </StackPanel>
+</ui:UiPage>

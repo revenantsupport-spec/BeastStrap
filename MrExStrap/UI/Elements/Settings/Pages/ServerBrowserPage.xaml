@@ -1,0 +1,184 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.ServerBrowserPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      d:DataContext="{d:DesignInstance Type=models:ServerBrowserViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="520" d:DesignWidth="820"
+      Title="ServerBrowserPage"
+      Scrollable="False">
+
+    <ui:UiPage.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </ui:UiPage.Resources>
+
+    <Grid Margin="0,0,14,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Intro -->
+        <TextBlock Grid.Row="0" Margin="0,0,0,12" FontSize="14" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+            <Run Text="Browse the live public servers of any Roblox experience and jump straight into the one you want — handy for landing in a quieter (or fuller) server, or rejoining friends." />
+            <LineBreak /><LineBreak />
+            <Run FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Text="Region detection is best-effort." />
+            <Run Text="Roblox only reveals a server's location through an authenticated call, so it needs a saved account (Multi Instance tab) and is resolved one server at a time on demand. It can be rate-limited or come back as Unknown." />
+            <LineBreak />
+            <Run Text="Sorting by ping or players and joining the emptiest server need no account — only region detection does." />
+        </TextBlock>
+
+        <!-- Place input -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ui:TextBox Grid.Column="0" Icon="Search24" PlaceholderText="Roblox place ID or game link (e.g. https://www.roblox.com/games/1234567/Name)"
+                        Text="{Binding PlaceIdInput, UpdateSourceTrigger=PropertyChanged}" />
+            <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="ArrowDownload24"
+                       Content="Load servers" Command="{Binding LoadCommand}" IsEnabled="{Binding NotBusy}" />
+            <ui:Button Grid.Column="2" Margin="8,0,0,0" Appearance="Primary" Icon="Play24"
+                       Content="Join emptiest server" Command="{Binding JoinEmptiestCommand}" IsEnabled="{Binding NotBusy}"
+                       ToolTip="Find and join the least-populated public server of this game in one click. No account needed." />
+        </Grid>
+
+        <!-- Sort + region toolbar -->
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Sort" VerticalAlignment="Center" Margin="2,0,8,0"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <ComboBox Grid.Column="1" MinWidth="140" VerticalAlignment="Center"
+                      ItemsSource="{Binding SortOptions, Mode=OneTime}" SelectedItem="{Binding SelectedSort, Mode=TwoWay}" />
+
+            <TextBlock Grid.Column="2" Text="Region" VerticalAlignment="Center" Margin="16,0,8,0"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <ComboBox Grid.Column="3" MinWidth="150" VerticalAlignment="Center"
+                      ItemsSource="{Binding RegionFilters}" SelectedItem="{Binding SelectedRegionFilter, Mode=TwoWay}" />
+            <ui:Button Grid.Column="4" Margin="8,0,0,0" Icon="Globe24" Content="Detect regions"
+                       Command="{Binding DetectAllRegionsCommand}" IsEnabled="{Binding HasServers}" />
+
+            <TextBlock Grid.Column="6" VerticalAlignment="Center" TextAlignment="Right" TextTrimming="CharacterEllipsis"
+                       Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"
+                       Text="{Binding Status}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Grid>
+
+        <!-- Server list. Built from an ItemsControl + custom row template on purpose: WPF-UI's global
+             ListView style drops the GridViewRowPresenter, so ListView+GridView renders ToString(). -->
+        <Border Grid.Row="3" CornerRadius="6" BorderThickness="1"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                Background="{DynamicResource ControlFillColorDefaultBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Column header -->
+                <Border Grid.Row="0" Padding="14,9" BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" MinWidth="180" />
+                            <ColumnDefinition Width="130" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Players" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="1" Text="Ping" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="2" Text="FPS" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="3" Text="Region" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Grid>
+                </Border>
+
+                <!-- Rows -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding ServersView}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,0,0,1" Padding="14,7"
+                                        BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" MinWidth="180" />
+                                            <ColumnDefinition Width="130" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="{Binding PlayersText}" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding PingText}" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding FpsText}" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding RegionDisplay}" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                            <ui:Button Content="Detect" Margin="10,0,0,0" Padding="8,2" FontSize="11"
+                                                       Visibility="{Binding CanDetect, Converter={StaticResource BoolToVis}}"
+                                                       Command="{Binding DataContext.DetectRegionCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:UiPage}}}"
+                                                       CommandParameter="{Binding}" />
+                                            <ui:ProgressRing Width="16" Height="16" Margin="10,0,0,0" IsIndeterminate="True"
+                                                             Visibility="{Binding IsDetecting, Converter={StaticResource BoolToVis}}" />
+                                        </StackPanel>
+
+                                        <ui:Button Grid.Column="4" Content="Join" Icon="Play24" Appearance="Primary"
+                                                   Padding="12,4" HorizontalAlignment="Right"
+                                                   Command="{Binding DataContext.JoinCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:UiPage}}}"
+                                                   CommandParameter="{Binding}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Footer: load more -->
+        <Grid Grid.Row="4" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Text="Joining lands you in the chosen server as your currently signed-in Roblox account, using the FastFlags and mods BeastStrap already applied." />
+            <ui:Button Grid.Column="1" Icon="ArrowDown24" Content="Load more"
+                       Command="{Binding LoadMoreCommand}" IsEnabled="{Binding CanLoadMore}" />
+        </Grid>
+    </Grid>
+</ui:UiPage>

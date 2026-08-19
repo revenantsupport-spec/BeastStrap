@@ -1,0 +1,278 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.AppearancePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:resources="clr-namespace:BeastStrap.Resources"
+      mc:Ignorable="d"
+      d:DesignHeight="1100" d:DesignWidth="800"
+      Title="AppearancePage"
+      Scrollable="True">
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Text="{x:Static resources:Strings.Menu_Appearance_Description}" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8" />
+
+        <controls:OptionControl
+            Header="{x:Static resources:Strings.Menu_Appearance_Language_Title}"
+            Description="{x:Static resources:Strings.Menu_Appearance_Language_Description}">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding Languages, Mode=OneTime}" Text="{Binding SelectedLanguage, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- ===== Theme ===== -->
+        <TextBlock Text="Theme" FontSize="20" FontWeight="Medium" Margin="0,22,0,0" />
+        <TextBlock Text="Pick a preset or craft your own. Every change previews live." FontSize="14"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4" />
+
+        <controls:OptionControl Header="Theme preset" Description="A built-in colour scheme. Editing any colour below switches this to Custom.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding ThemePresets}" SelectedItem="{Binding SelectedThemePreset, Mode=TwoWay}" />
+        </controls:OptionControl>
+
+        <!-- Colours -->
+        <TextBlock Text="Colours" FontSize="16" FontWeight="Medium" Margin="0,16,0,6" />
+        <Border CornerRadius="10" Padding="16,12" BorderThickness="1"
+                Background="{DynamicResource GlassFillBrush}" BorderBrush="{DynamicResource GlassBorderBrush}">
+            <StackPanel>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Accent" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <Border Grid.Column="1" Width="48" Height="24" CornerRadius="5" Margin="0,0,12,0"
+                            BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                            Background="{DynamicResource BrandCyanBrush}" />
+                    <ui:TextBox Grid.Column="2" Text="{Binding AccentHex, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Gradient end" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <Border Grid.Column="1" Width="48" Height="24" CornerRadius="5" Margin="0,0,12,0"
+                            BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                            Background="{DynamicResource BrandGradientBrush}" />
+                    <ui:TextBox Grid.Column="2" Text="{Binding GradientEndHex, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Purple accent" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <Border Grid.Column="1" Width="48" Height="24" CornerRadius="5" Margin="0,0,12,0"
+                            BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                            Background="{DynamicResource BrandPurpleBrush}" />
+                    <ui:TextBox Grid.Column="2" Text="{Binding PurpleHex, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Background" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <Border Grid.Column="1" Width="48" Height="24" CornerRadius="5" Margin="0,0,12,0"
+                            BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                            Background="{DynamicResource ApplicationBackgroundBrush}" />
+                    <ui:TextBox Grid.Column="2" Text="{Binding BackgroundHex, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Card surface" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <Border Grid.Column="1" Width="48" Height="24" CornerRadius="5" Margin="0,0,12,0"
+                            BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                            Background="{DynamicResource BrandSurfaceBrush}" />
+                    <ui:TextBox Grid.Column="2" Text="{Binding SurfaceHex, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Effects -->
+        <TextBlock Text="Effects" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <controls:OptionControl Header="Aurora background" Description="The animated glow behind the launcher and Home dashboard.">
+            <ui:ToggleSwitch IsChecked="{Binding EnableAurora, Mode=TwoWay}" />
+        </controls:OptionControl>
+        <controls:OptionControl Header="Frosted glass" Description="Translucent card surfaces. Turn off for solid cards.">
+            <ui:ToggleSwitch IsChecked="{Binding EnableGlass, Mode=TwoWay}" />
+        </controls:OptionControl>
+        <controls:OptionControl Header="Neon glow" Description="Soft glow on the wordmark and accent edges.">
+            <ui:ToggleSwitch IsChecked="{Binding EnableGlow, Mode=TwoWay}" />
+        </controls:OptionControl>
+        <controls:OptionControl Header="Gradient direction" Description="Which way the brand gradient sweeps across buttons, dividers and hero cards.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding GradientDirections}" SelectedItem="{Binding GradientDirection, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Path=., Converter={StaticResource EnumNameConverter}}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </controls:OptionControl>
+        <controls:OptionControl Header="Glow intensity" Description="How strong the neon glow is. Off disables it even when the toggle above is on.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding GlowIntensities}" SelectedItem="{Binding GlowIntensity, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Path=., Converter={StaticResource EnumNameConverter}}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </controls:OptionControl>
+
+        <!-- Custom wallpaper -->
+        <TextBlock Text="Background image" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <controls:OptionControl Header="Custom wallpaper" Description="A picture behind the settings pages and launch menu, dimmed behind the glass content. Picking one turns this on.">
+            <StackPanel Orientation="Horizontal">
+                <ui:ToggleSwitch IsChecked="{Binding EnableWallpaper, Mode=TwoWay}" />
+                <ui:Button Margin="8,0,0,0" Icon="FolderOpen24" Content="Browse" Command="{Binding BrowseWallpaperCommand}" />
+                <ui:Button Margin="8,0,0,0" Icon="Delete24" Content="Clear" Command="{Binding ClearWallpaperCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+        <controls:OptionControl Header="Wallpaper strength" Description="How strongly the image shows through (0–100%).">
+            <Slider Width="200" Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                    Value="{Binding WallpaperOpacity, Mode=TwoWay, Converter={StaticResource OpacityPercentConverter}}" />
+        </controls:OptionControl>
+        <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding WallpaperLocation}" />
+
+        <!-- App icon -->
+        <TextBlock Text="App icon" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <controls:OptionControl Header="Custom app icon" Description="Swap the icon shown in the taskbar, alt-tab and system tray. Pick an .ico or image file. Applies to open windows now and everywhere on the next launch.">
+            <StackPanel Orientation="Horizontal">
+                <ui:Button Icon="FolderOpen24" Content="Browse" Command="{Binding BrowseAppIconCommand}" />
+                <ui:Button Margin="8,0,0,0" Content="Reset" Command="{Binding ClearAppIconCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+        <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding AppIconLocation}" />
+
+        <ui:Button Margin="0,20,0,0" Icon="ArrowReset24" Content="Reset theme to default" Command="{Binding ResetThemeCommand}" />
+
+        <!-- ===== Bootstrapper =====
+             The launch dialog, which is a separate surface from the app theme above.
+             These bindings existed in AppearanceViewModel the whole time but lost their
+             UI when this page was rebuilt for the glass overhaul, so the styles, icons
+             and custom themes were all unreachable. -->
+        <TextBlock Text="Bootstrapper" FontSize="20" FontWeight="Medium" Margin="0,28,0,0" />
+        <TextBlock Text="The dialog you see while Roblox downloads and starts. Nothing here affects the app theme above." FontSize="14"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4" />
+
+        <controls:OptionControl Header="Style" Description="Which launch dialog to show. Pick Custom Dialog to use one of your own themes below.">
+            <StackPanel Orientation="Horizontal">
+                <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding Dialogs, Mode=OneTime}" SelectedItem="{Binding Dialog, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=., Converter={StaticResource EnumNameConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <ui:Button Margin="8,0,0,0" Icon="Play24" Content="Preview" Command="{Binding PreviewBootstrapperCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+
+<!-- ===== Roblox window =====
+             Custom icon + title for the RUNNING Roblox window, applied by the watcher.
+             Ported from FishyStrap (v420.46). Only reachable while window manipulation is
+             enabled on the Integrations page — the whole section is gated off otherwise. -->
+        <TextBlock Text="Roblox window" FontSize="20" FontWeight="Medium" Margin="0,28,0,0" />
+        <TextBlock Text="Customize the Roblox window while you play — custom icon and custom title. Requires Window manipulation in Settings → Integrations." FontSize="14"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4" />
+
+        <StackPanel>
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WindowManipulationEnabled}" Value="False">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <ui:InfoBar Margin="0,8,0,8" Padding="8" Title="{x:Static resources:Strings.Common_NotAvailable}" Message="Enable Window manipulation in Settings → Integrations to customize the Roblox window." Severity="Informational" IsOpen="True" IsClosable="False" />
+        </StackPanel>
+
+        <StackPanel IsEnabled="{Binding WindowManipulationEnabled, Mode=OneWay}">
+            <controls:OptionControl Header="Roblox window title" Description="The text shown on the Roblox window's title bar while it runs.">
+                <ui:TextBox PlaceholderText="Roblox" Width="200" Text="{Binding WindowTitle, Mode=TwoWay}" />
+            </controls:OptionControl>
+
+            <controls:OptionControl Header="Roblox window icon" Description="The icon shown on the Roblox window's title bar and taskbar while it runs. Picking a custom one switches this to Custom.">
+                <Grid Width="200" HorizontalAlignment="Right">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox Grid.Column="0" Padding="10,5,10,5" ItemsSource="{Binding RobloxIcons, Mode=OneWay}" SelectedValuePath="IconType" SelectedValue="{Binding RobloxIcon, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Height="16" Source="{Binding ImageSource, Mode=OneWay}" RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding Path=IconType, Converter={StaticResource EnumNameConverter}}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <ui:Button Grid.Column="1" Width="34" Height="30" Margin="4,0,0,0" Icon="Folder16" ToolTip="{Binding CustomRobloxIconLocation, Mode=OneWay}" Command="{Binding BrowseCustomRobloxIconLocationCommand}" />
+                </Grid>
+            </controls:OptionControl>
+            <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding CustomRobloxIconLocation}" />
+        </StackPanel>
+
+        <!-- Opens itself when the Custom Dialog style is selected, since that's the only
+             time these matter. Kept as an expander so it isn't noise the rest of the time. -->
+        <ui:CardExpander Margin="0,12,0,0" IsExpanded="{Binding CustomThemesExpanded, Mode=OneWay}">
+            <ui:CardExpander.Header>
+                <StackPanel>
+                    <TextBlock FontSize="14" Text="Custom themes" />
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               Text="Build your own launch dialog. Only used when the Style above is set to Custom Dialog." />
+                </StackPanel>
+            </ui:CardExpander.Header>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="250" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ListBox Grid.Column="0" Height="220" Margin="0,0,8,0"
+                         ItemsSource="{Binding CustomThemes, Mode=OneWay}"
+                         SelectedItem="{Binding SelectedCustomTheme, Mode=TwoWay}" />
+                <StackPanel Grid.Column="1">
+                    <ui:Button Icon="Add24" Content="Add" HorizontalAlignment="Stretch" Command="{Binding AddCustomThemeCommand}" />
+                    <ui:Button Margin="0,6,0,0" Icon="PaintBrush24" Content="Edit" HorizontalAlignment="Stretch"
+                               Command="{Binding EditCustomThemeCommand}" IsEnabled="{Binding IsCustomThemeSelected}" />
+                    <ui:Button Margin="0,6,0,0" Icon="ArrowExportRtl24" Content="Export" HorizontalAlignment="Stretch"
+                               Command="{Binding ExportCustomThemeCommand}" IsEnabled="{Binding IsCustomThemeSelected}" />
+                    <ui:Button Margin="0,6,0,0" Icon="Delete24" Content="Delete" HorizontalAlignment="Stretch"
+                               Command="{Binding DeleteCustomThemeCommand}" IsEnabled="{Binding IsCustomThemeSelected}" />
+                    <TextBlock Margin="0,12,0,4" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="Rename to" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox Grid.Column="0" IsEnabled="{Binding IsCustomThemeSelected}"
+                                    Text="{Binding SelectedCustomThemeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ui:Button Grid.Column="1" Margin="6,0,0,0" Content="Rename"
+                                   Command="{Binding RenameCustomThemeCommand}" IsEnabled="{Binding IsCustomThemeSelected}" />
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </ui:CardExpander>
+    </StackPanel>
+</ui:UiPage>

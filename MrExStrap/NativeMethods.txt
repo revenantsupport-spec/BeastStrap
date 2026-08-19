@@ -1,0 +1,11 @@
+﻿SetForegroundWindow
+FlashWindow
+GetWindowLong
+SetWindowLong
+SetWindowPos
+CopyIcon
+DestroyIcon
+GetWindowText
+SetWindowText
+SendMessage
+SHObjectProperties

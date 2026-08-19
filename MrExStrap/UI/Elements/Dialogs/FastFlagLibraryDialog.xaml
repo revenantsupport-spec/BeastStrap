@@ -1,0 +1,180 @@
+<base:WpfUiWindow x:Class="BeastStrap.UI.Elements.Dialogs.FastFlagLibraryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:base="clr-namespace:BeastStrap.UI.Elements.Base"
+        mc:Ignorable="d"
+        Title="Fast flag library"
+        Width="620"
+        Height="640"
+        MinWidth="520"
+        MinHeight="480"
+        Background="{ui:ThemeResource ApplicationBackgroundBrush}"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Padding="8" Title="Fast flag library" ShowMinimize="False" ShowMaximize="False"
+                     CanMaximize="False" Icon="pack://application:,,,/BeastStrap.ico" />
+
+        <TabControl Grid.Row="1" Margin="16,8,16,0" x:Name="MainTabs">
+
+            <!-- ============ Community presets ============ -->
+            <TabItem Header="Community presets">
+                <Grid Margin="8,8,8,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="Curated flag sets you can apply to the profile you're editing in one click. Flags already in the profile are overwritten; everything else is left alone." />
+
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox x:Name="PresetSearchBox" Grid.Column="0" Icon="Search32"
+                                    PlaceholderText="Search presets…" TextChanged="PresetSearchBox_TextChanged" />
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="1" Margin="8,0,0,0" Padding="10,5,10,5"
+                                  Width="160" SelectionChanged="CategoryFilter_SelectionChanged" />
+                    </Grid>
+
+                    <Border Grid.Row="2" CornerRadius="6" BorderThickness="1"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}">
+                        <ListBox x:Name="PresetList" Background="Transparent" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 SelectionChanged="PresetList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="6" Padding="10,8" Margin="0,0,0,6"
+                                            BorderThickness="1"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" />
+                                                    <Border Margin="8,0,0,0" Padding="6,1" CornerRadius="8"
+                                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                                        <TextBlock Text="{Binding Category}" FontSize="10.5"
+                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                    </Border>
+                                                    <Border Margin="6,0,0,0" Padding="6,1" CornerRadius="8"
+                                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                                        <TextBlock FontFamily="Consolas" FontSize="10.5"
+                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                            <Run Text="{Binding Flags.Count, Mode=OneWay}" /><Run Text=" flags" />
+                                                        </TextBlock>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" FontSize="11.5"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           Text="{Binding Description}" />
+                                            </StackPanel>
+                                            <ui:SymbolIcon Grid.Column="1" Symbol="CheckmarkCircle24"
+                                                           Foreground="#3B82F6" FontSize="18"
+                                                           VerticalAlignment="Center">
+                                                <ui:SymbolIcon.Style>
+                                                    <Style TargetType="ui:SymbolIcon">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ui:SymbolIcon.Style>
+                                            </ui:SymbolIcon>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <Grid Grid.Row="3" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" x:Name="PresetDetailText" VerticalAlignment="Center" FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" />
+                        <ui:Button Grid.Column="1" x:Name="ApplyPresetButton" Appearance="Primary" Icon="Add28"
+                                   Content="Apply preset" Click="ApplyPresetButton_Click" Margin="8,0,0,0" />
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ============ Backups ============ -->
+            <TabItem Header="Backups">
+                <Grid Margin="8,8,8,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="Snapshot the profile you're editing and bring it back any time. Backups are separate from the live per-profile files, so restoring is always an explicit choice." />
+
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox x:Name="BackupNameBox" Grid.Column="0" Icon="Save24"
+                                    PlaceholderText="Backup name, e.g. 'FPS preset before update'" />
+                        <ui:Button Grid.Column="1" Appearance="Primary" Icon="Save24"
+                                   Content="Save current flags" Click="SaveBackupButton_Click" Margin="8,0,0,0" />
+                    </Grid>
+
+                    <Border Grid.Row="2" CornerRadius="6" BorderThickness="1"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}">
+                        <ListBox x:Name="BackupList" Background="Transparent" BorderThickness="0"
+                                 SelectionChanged="BackupList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Display}" FontFamily="Consolas" FontSize="12"
+                                               Padding="2,3" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <ui:Button x:Name="RestoreBackupButton" Icon="ArrowImport24" Content="Restore selected"
+                                   Click="RestoreBackupButton_Click" Margin="0,0,8,0" />
+                        <ui:Button x:Name="DeleteBackupButton" Appearance="Danger" Icon="Delete48"
+                                   Content="Delete" Click="DeleteBackupButton_Click" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="2" Margin="0,10,0,0" Padding="14,10"
+                Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button MinWidth="100" Content="Close" Click="CloseButton_Click" IsCancel="True" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</base:WpfUiWindow>

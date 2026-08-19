@@ -1,0 +1,79 @@
+name: VirusTotal
+
+# Uploads a published release's binary to VirusTotal.
+#
+# The website shows a scan by looking the binary up by hash
+# (GET /api/v3/files/{sha256}). That 404s until VirusTotal has actually seen
+# the file, so a fresh release falls back to a plain link. Submitting on
+# publish means the report is there by the time anyone checks.
+#
+# Reacts to the release rather than gating it, so nothing here can hold up or
+# break a publish. Needs a VIRUSTOTAL_API_KEY secret (Settings > Secrets >
+# Actions). VirusTotal's free tier may not be used in commercial products or
+# services.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to scan (e.g. v420.37). Defaults to the latest release.'
+        required: false
+      skip_sums_check:
+        description: 'Skip SHA256SUMS verification (for older releases published without that asset)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # No submodules: only the script is needed, wpfui would just be dead weight.
+      - uses: actions/checkout@v6
+
+      - name: Resolve tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-$RELEASE_TAG}"
+          if [ -z "$tag" ]; then
+            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+            echo "No tag given, using the latest release: $tag"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p vt
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir vt \
+            --pattern '*.exe' --pattern 'SHA256SUMS' --clobber
+          ls -lh vt
+
+      # continue-on-error so a VirusTotal outage leaves the run green.
+      - name: Submit to VirusTotal
+        continue-on-error: true
+        env:
+          VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          SKIP_SUMS: ${{ inputs.skip_sums_check }}
+        run: |
+          set -euo pipefail
+          args=(--dir vt --sums vt/SHA256SUMS --tag "$TAG")
+          if [ "${SKIP_SUMS:-false}" = "true" ]; then
+            args+=(--skip-sums-check)
+          fi
+          python3 .github/scripts/vt_submit.py "${args[@]}"

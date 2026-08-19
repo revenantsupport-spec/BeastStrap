@@ -1,0 +1,194 @@
+<ui:UiPage x:Class="BeastStrap.UI.Elements.Settings.Pages.VersionsManagerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:BeastStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:BeastStrap.UI.ViewModels.Settings"
+      xmlns:vm="clr-namespace:BeastStrap.UI.ViewModels"
+      d:DataContext="{d:DesignInstance Type=models:VersionsManagerViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="600" d:DesignWidth="900"
+      Title="VersionsManagerPage"
+      Scrollable="True">
+
+    <ui:UiPage.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </ui:UiPage.Resources>
+
+    <StackPanel Margin="0,0,14,14">
+
+        <TextBlock Margin="0,0,0,4" Text="Versions Manager" FontSize="18" FontWeight="SemiBold" />
+        <TextBlock Margin="0,0,0,12" TextWrapping="Wrap" FontSize="13"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="Save named profiles (one per executor or 'Latest LIVE') and switch between them with one click. The active profile is used the next time you launch Roblox. Every profile's Roblox install is kept on disk so switching is instant." />
+
+        <!-- Active profile summary card -->
+        <Border Margin="0,0,0,12" Padding="14,12" CornerRadius="6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Active profile" />
+                    <TextBlock Margin="0,2,0,0" FontSize="16" FontWeight="SemiBold" Text="{Binding ActiveName, Mode=OneWay}" />
+                    <TextBlock Margin="0,2,0,0" FontFamily="Consolas" FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Text="{Binding ActiveHash, Mode=OneWay}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Text="{Binding DiskUsageText, Mode=OneWay}" />
+            </Grid>
+        </Border>
+
+        <!-- Single-pin conflict banner (Downgrading tab is also active) -->
+        <Border Margin="0,0,0,12" Padding="12,10" CornerRadius="4"
+                Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                BorderBrush="{DynamicResource SystemFillColorCautionBrush}" BorderThickness="0,0,0,2"
+                Visibility="{Binding SinglePinConflictVisibility, Mode=OneWay}">
+            <StackPanel Orientation="Horizontal">
+                <ui:SymbolIcon Symbol="Warning24" FontSize="18" Margin="0,0,8,0" VerticalAlignment="Center" />
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" FontSize="12"
+                           Text="A single-version pin is also set on the Downgrading tab. The active profile here takes priority for launches." />
+            </StackPanel>
+        </Border>
+
+        <!-- Tile grid -->
+        <ItemsControl ItemsSource="{Binding Tiles, Mode=OneWay}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel ItemWidth="170" ItemHeight="210" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="6" Padding="0" CornerRadius="6"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            Cursor="Hand">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                        <Setter Property="BorderBrush" Value="#3B82F6" />
+                                        <Setter Property="BorderThickness" Value="2" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick"
+                                          Command="{Binding DataContext.ActivateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                          CommandParameter="{Binding Id}" />
+                        </Border.InputBindings>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Active checkmark badge -->
+                            <Border Grid.Row="0" HorizontalAlignment="Right" Margin="0,6,6,0"
+                                    Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ui:SymbolIcon Symbol="CheckmarkCircle24" Foreground="#3B82F6" FontSize="18" />
+                            </Border>
+
+                            <!-- Icon area: logo if available else letter placeholder -->
+                            <Border Grid.Row="1" Width="80" Height="80" Margin="0,4,0,0"
+                                    HorizontalAlignment="Center" CornerRadius="6" Background="#000000">
+                                <Grid>
+                                    <Image Source="{Binding Logo, Mode=OneWay}"
+                                           Stretch="Uniform" Margin="6"
+                                           Visibility="{Binding HasLogo, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+                                    <TextBlock Text="{Binding LetterPlaceholder}"
+                                               Foreground="White" FontWeight="Bold" FontSize="36"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Visibility="{Binding NoLogo, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Grid.Row="2" Margin="8,8,8,0" HorizontalAlignment="Center"
+                                       Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <StackPanel Grid.Row="3" Margin="8,2,8,0" HorizontalAlignment="Center">
+                                <TextBlock HorizontalAlignment="Center"
+                                           Text="{Binding DisplayHash, Mode=OneTime}"
+                                           FontFamily="Consolas" FontSize="10"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Margin="0,3,0,0" HorizontalAlignment="Center"
+                                           Text="{Binding LastRefreshText, Mode=OneTime}"
+                                           FontSize="9"
+                                           Foreground="#3B82F6"
+                                           Visibility="{Binding IsExecutorTracked, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneTime}" />
+                                <TextBlock Margin="0,3,0,0" HorizontalAlignment="Center"
+                                           Text="Install target"
+                                           FontSize="9" FontWeight="SemiBold"
+                                           Foreground="#3B82F6"
+                                           Visibility="{Binding IsInstallTarget, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneTime}" />
+                            </StackPanel>
+
+                            <!-- Footer: install-target button + delete + disk size -->
+                            <Grid Grid.Row="4" Margin="8,4,8,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                                           Text="{Binding DiskUsageText, Mode=OneTime}"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                <ui:Button Grid.Column="1" Padding="4,2" Icon="Link24" Margin="0,0,4,0"
+                                           IsEnabled="{Binding CanSetAsInstallTarget, Mode=OneTime}"
+                                           Command="{Binding DataContext.SetAsInstallTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                           CommandParameter="{Binding Id}"
+                                           ToolTipService.ShowOnDisabled="True"
+                                           ToolTip="Set this profile as the install target. Click before running an executor installer (e.g. Synapse Z) so its files land in this profile's folder." />
+                                <ui:Button Grid.Column="2" Padding="4,2" Icon="Delete24"
+                                           IsEnabled="{Binding CanDelete, Mode=OneTime}"
+                                           Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                           CommandParameter="{Binding Id}"
+                                           ToolTipService.ShowOnDisabled="True"
+                                           ToolTip="Delete this profile. The built-in Latest LIVE profile cannot be removed." />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Footer actions -->
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <ui:Button Icon="Add24" Content="Add profile" Appearance="Primary"
+                       Command="{Binding AddProfileCommand, Mode=OneTime}" />
+            <ui:Button Margin="8,0,0,0" Icon="FolderOpen24" Content="Open versions folder"
+                       Command="{Binding OpenVersionsFolderCommand, Mode=OneTime}" />
+            <ui:Button Margin="8,0,0,0" Icon="ArrowClockwise24" Content="Refresh"
+                       Command="{Binding RefreshCommand, Mode=OneTime}"
+                       IsEnabled="{Binding IsNotRefreshing, Mode=OneWay}"
+                       ToolTip="Pull the latest Roblox version for every executor-tracked profile from WEAO." />
+            <ui:Button Margin="8,0,0,0" Icon="Cloud24" Content="Executor checker"
+                       Command="{Binding ExecutorCheckerCommand, Mode=OneTime}"
+                       ToolTip="Live WEAO status for every Windows executor: current version, updated date, up-to-date/detected/free badges, and whether your tracked profiles are on the latest build. Open an executor's website for its changelog." />
+            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontSize="11"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Text="{Binding RefreshStatus, Mode=OneWay}"
+                       Visibility="{Binding HasRefreshStatus, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
+        </StackPanel>
+
+        <TextBlock Margin="0,12,0,0" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Text="Heads up: each Roblox install is around 700 MB. Five profiles ≈ 3.5 GB. Use 'Open versions folder' to see exactly what's on disk. Executor profiles auto-update when WEAO lists a newer build." />
+    </StackPanel>
+</ui:UiPage>
