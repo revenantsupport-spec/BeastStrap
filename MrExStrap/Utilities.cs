@@ -72,7 +72,18 @@ namespace BeastStrap
             if (!version.Contains('.'))
                 version += ".0";
 
-            return new Version(version);
+            var v = new Version(version);
+
+            // Trailing zero segments are hidden from the displayed version (App.FormatAssemblyVersion
+            // shows "420.49" for 420.49.0). System.Version treats a missing segment as -1, so
+            // "420.49" compared to a "v420.49.0" tag came out LessThan — every launch decided there
+            // was an update, re-installed it, and prompted again forever. Normalize to the same
+            // trimmed form so "420.49" == "420.49.0" == "420.49.0.0".
+            if (v.Build > 0)
+                return new Version(v.Major, v.Minor, v.Build);
+            if (v.Minor > 0)
+                return new Version(v.Major, v.Minor);
+            return new Version(v.Major);
         }
 
         /// <summary>
