@@ -83,7 +83,7 @@ namespace BeastStrap
                 return new Version(v.Major, v.Minor, v.Build);
             if (v.Minor > 0)
                 return new Version(v.Major, v.Minor);
-            return new Version(v.Major);
+            return new Version(v.Major, 0);
         }
 
         /// <summary>
