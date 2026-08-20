@@ -385,7 +385,7 @@ Would you like to upgrade/overwrite your currently installed version?</value>
     <value>Special Thanks</value>
   </data>
   <data name="Menu.About.Description" xml:space="preserve">
-    <value>A fork of Bloxstrap that forces the LIVE channel on Roblox, built for executor and external users.</value>
+    <value>The Roblox BeastStrap for gimpys.</value>
   </data>
   <data name="Menu.About.DiscordServer" xml:space="preserve">
     <value>Discord server</value>
