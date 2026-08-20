@@ -18,9 +18,9 @@ namespace BeastStrap.UI.Elements.Controls
     /// frame, synchronised with the display's vsync (typically 60 Hz), which is far smoother than a
     /// DispatcherTimer. Elapsed render time is accumulated against each frame's own delay, so the
     /// GIF plays at its native speed but is only ever advanced at the display refresh rate (max one
-    /// source swap per render tick). All frames are frozen at load, which prevents the flicker /
-    /// artefacts you get from swapping live-decoded images every tick. The hook only runs while the
-    /// control is visible and is detached when it isn't, so it costs nothing in the background.
+    /// source swap per render tick). Frames are composited over each other and frozen at load
+    /// (delta frames otherwise flash the background through as black flicker) and the hook only runs
+    /// while the control is visible, so it costs nothing in the background.
     /// </summary>
     public partial class GifBackground : UserControl
     {
@@ -37,7 +37,7 @@ namespace BeastStrap.UI.Elements.Controls
             set => SetValue(SourcePathProperty, value);
         }
 
-        private readonly List<BitmapFrame> _frames = new();
+        private readonly List<BitmapSource> _frames = new();
         private readonly List<int> _delaysMs = new();
         private bool _subscribedToRendering;
         private int _frameIndex;
@@ -128,23 +128,20 @@ namespace BeastStrap.UI.Elements.Controls
                     BitmapCreateOptions.PreservePixelFormat,
                     BitmapCacheOption.OnLoad);
 
+                var rawFrames = new List<BitmapFrame>();
                 foreach (BitmapFrame frame in decoder.Frames)
                 {
-                    _frames.Add(frame);
+                    rawFrames.Add(frame);
                     _delaysMs.Add(GetFrameDelayMs(frame));
-
-                    // Freeze every frame up-front so WPF can hand it to the render thread
-                    // directly each swap — live (unfrozen) images re-decode and flicker.
-                    try
-                    {
-                        if (!frame.IsFrozen)
-                            frame.Freeze();
-                    }
-                    catch (Exception ex)
-                    {
-                        App.Logger.WriteException("GifBackground::FreezeFrame", ex);
-                    }
                 }
+
+                // Composite the raw frames into full-canvas, GPU-friendly images. Raw GIF
+                // frames are usually delta frames - each only carries the pixels that changed
+                // since the previous frame and relies on the player drawing it over what came
+                // before. Swapping the raw frames directly shows the "unchanged" regions as
+                // the dark ink scrim flashing through (the black flicker). Bake the
+                // accumulation in once here, so playback is just swaps of frozen images.
+                _frames.AddRange(CompositeFrames(rawFrames));
             }
             catch (Exception ex)
             {
@@ -195,6 +192,82 @@ namespace BeastStrap.UI.Elements.Controls
             }
 
             return defaultDelayMs;
+        }
+
+        // Render each frame over the accumulated result of everything before it, producing a
+        // full-canvas opaque image per frame (Pbgra32 - palette resolved, no per-frame decode).
+        // Playback then just swaps frozen sources, which the render thread can consume directly.
+        private static List<BitmapSource> CompositeFrames(IReadOnlyList<BitmapFrame> frames)
+        {
+            var composited = new List<BitmapSource>(frames.Count);
+            if (frames.Count == 0)
+                return composited;
+
+            int canvasWidth = 1, canvasHeight = 1;
+            foreach (BitmapFrame f in frames)
+            {
+                if ((int)f.Width > canvasWidth) canvasWidth = (int)f.Width;
+                if ((int)f.Height > canvasHeight) canvasHeight = (int)f.Height;
+            }
+
+            double dpiX = frames[0].DpiX > 0 ? frames[0].DpiX : 96.0;
+            double dpiY = frames[0].DpiY > 0 ? frames[0].DpiY : 96.0;
+
+            BitmapSource? previous = null;
+
+            foreach (BitmapFrame frame in frames)
+            {
+                int disposal = GetDisposalMethod(frame);
+
+                var visual = new DrawingVisual();
+                using (DrawingContext dc = visual.RenderOpen())
+                {
+                    // Disposal 2 (restore to background) clears the canvas, so don't carry the
+                    // previous frame over. Everything else accumulates - what most web GIFs expect.
+                    if (previous is not null && disposal != 2)
+                        dc.DrawImage(previous, new Rect(0, 0, canvasWidth, canvasHeight));
+
+                    dc.DrawImage(frame, new Rect(0, 0, canvasWidth, canvasHeight));
+                }
+
+                var rtb = new RenderTargetBitmap(canvasWidth, canvasHeight, dpiX, dpiY, PixelFormats.Pbgra32);
+                rtb.Render(visual);
+                rtb.Freeze();
+                composited.Add(rtb);
+                previous = rtb;
+            }
+
+            return composited;
+        }
+
+        // GIF disposal method from the graphics-control extension:
+        // 0 = unspecified (treat as 1), 1 = leave in place, 2 = restore to background, 3 = restore to previous.
+        private static int GetDisposalMethod(BitmapFrame frame)
+        {
+            const string disposalQuery = "/grctlex/GIFDisposalMethod";
+
+            try
+            {
+                if (frame.Metadata is BitmapMetadata md && md.ContainsQuery(disposalQuery))
+                {
+                    int method = md.GetQuery(disposalQuery) switch
+                    {
+                        byte b => b,
+                        ushort u => u,
+                        short s => s,
+                        int i => i,
+                        _ => -1
+                    };
+                    if (method >= 0 && method <= 3)
+                        return method;
+                }
+            }
+            catch
+            {
+                // best effort - accumulate by default
+            }
+
+            return 0;
         }
 
         private void Start()

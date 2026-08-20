@@ -215,27 +215,39 @@ if ($noteLines.Count -eq 0) {
 Write-Host "Release notes: $($noteLines.Count) change(s) since $(if ($prevTag) { $prevTag } else { 'the beginning' })" -ForegroundColor Yellow
 
 # ---------------------------------------------------------------------------
-# 6. create the release and upload the exe (published immediately, no CI needed)
+# 6. create the release as a draft, upload the exe, THEN publish it. Publishing
+#    immediately (the old behaviour) left a window where /releases/latest
+#    returned a live release with zero assets, so an auto-update check in that
+#    window failed with "The X release has no .exe asset attached" - that's the
+#    error v420.64.0 caused on a user's machine. The "published" event (which
+#    triggers the VirusTotal scan) only fires after the exe is actually there.
 # ---------------------------------------------------------------------------
 $body = @{
     tag_name   = $Tag
     name       = "BeastStrap $Version"
-    draft      = $false
+    draft      = $true
     prerelease = $false
     body       = $notes
 } | ConvertTo-Json
 
-Write-Host "Creating GitHub release $Tag ..." -ForegroundColor Yellow
+Write-Host "Creating GitHub release $Tag (draft) ..." -ForegroundColor Yellow
 $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases" -Method Post -Headers $Headers -ContentType "application/json" -Body $body
 Write-Host "Release created: $($rel.html_url)" -ForegroundColor Green
 
 $assetUrl = "https://uploads.github.com/repos/$Repo/releases/$($rel.id)/assets?name=BeastStrap.exe"
 Write-Host "Uploading BeastStrap.exe ($mb MB)..." -ForegroundColor Yellow
-$up = curl.exe -sS -X POST -H "Authorization: Bearer $Token" -H "Accept: application/vnd.github+json" `
+# --fail-with-body: curl otherwise reports exit 0 for an HTTP error like 422
+# (duplicate asset name), so a failed upload used to slip through silently and
+# leave the release published with no exe.
+$up = curl.exe -sS --fail-with-body -X POST -H "Authorization: Bearer $Token" -H "Accept: application/vnd.github+json" `
     -H "Content-Type: application/octet-stream" --data-binary "@$Publish" $assetUrl
 if ($LASTEXITCODE -ne 0) { throw "asset upload failed (curl exit $LASTEXITCODE): $up" }
 $upJson = $up | ConvertFrom-Json
 Write-Host "Uploaded: $($upJson.browser_download_url)" -ForegroundColor Green
+
+Write-Host "Publishing release $Tag ..." -ForegroundColor Yellow
+Invoke-RestMethod -Method Patch -Uri "https://api.github.com/repos/$Repo/releases/$($rel.id)" -Headers $Headers -ContentType "application/json" -Body '{"draft":false}' | Out-Null
+Write-Host "Release published." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # 7. verify

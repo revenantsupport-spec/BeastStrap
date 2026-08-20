@@ -77,7 +77,25 @@ jobs:
           sha256sum BeastStrap-${{ github.ref_name }}.exe BeastStrap.exe > SHA256SUMS
           cat SHA256SUMS
 
+      # The updater script (BeastStrapUpdater.ps1) creates the release itself and
+      # uploads BeastStrap.exe, so the tag usually already has a release by the
+      # time this job runs. Creating a second one would race it (duplicate tag or
+      # duplicate asset uploads). Only create when absent; otherwise attach the
+      # versioned exe + SHA256SUMS to the existing release.
+      - name: Check if a release already exists for this tag
+        id: check-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release for $GITHUB_REF_NAME already exists (created by the updater script)."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create release
+        if: steps.check-release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           draft: true
@@ -86,3 +104,12 @@ jobs:
             BeastStrap.exe
             SHA256SUMS
           name: BeastStrap ${{ github.ref_name }}
+
+      - name: Attach assets to existing release
+        if: steps.check-release.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            BeastStrap-${{ github.ref_name }}.exe BeastStrap.exe SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --clobber

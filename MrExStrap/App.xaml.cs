@@ -322,6 +322,18 @@ namespace BeastStrap
                     return null;
                 }
 
+                // If the latest release is up but its assets haven't landed yet (a publish/upload
+                // race), an update check would fail with "no .exe asset attached" even though the
+                // binary exists. Fall back to the most recent release that actually has an exe so
+                // the user is never told the installer is missing.
+                if (!releaseInfo.Assets.Any(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
+                {
+                    Logger.WriteLine(LOG_IDENT, $"Latest release {releaseInfo.TagName} has no .exe asset yet — scanning for the newest release that does.");
+                    GithubRelease? fallback = await FindLatestReleaseWithExeAsync(token);
+                    if (fallback is not null)
+                        releaseInfo = fallback;
+                }
+
                 RecordUpdateCheckSuccess();
                 return releaseInfo;
             }
@@ -340,6 +352,31 @@ namespace BeastStrap
             }
 
             return null;
+        }
+
+        // Newest published release that carries a .exe asset. Used as a fallback when
+        // /releases/latest is asset-less — the updater publishes after uploading the exe, but a
+        // freshly-published release can still be caught mid-population (and the CI attaches the
+        // versioned exe + SHA256SUMS a couple of minutes after publish).
+        private static async Task<GithubRelease?> FindLatestReleaseWithExeAsync(CancellationToken token)
+        {
+            const string LOG_IDENT = "App::FindLatestReleaseWithExe";
+
+            try
+            {
+                var releases = await Http.GetJson<List<GithubRelease>>($"{ProjectApiBase}/repos/{ProjectRepository}/releases?per_page=100", token);
+                if (releases is null)
+                    return null;
+
+                return releases.FirstOrDefault(r =>
+                    r.Assets is not null
+                    && r.Assets.Any(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)));
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteException(LOG_IDENT, ex);
+                return null;
+            }
         }
 
         // Number of consecutive failed update checks before we tell the user their copy can no
