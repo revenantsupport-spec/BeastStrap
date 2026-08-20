@@ -15,6 +15,9 @@
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\BeastStrapUpdater.ps1 -Version 421.0.0 -SkipBuild
+
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\BeastStrapUpdater.ps1 -BackfillNotes
 #>
 param(
     # Explicit version to ship (e.g. "421.0.0"). If empty, auto-bumps the current one.
@@ -27,7 +30,13 @@ param(
     [string]$Token = "",
 
     # Don't touch git or GitHub; just print what would happen.
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    # Backfill: recompute every published release's body from git history between
+    # consecutive tags and PATCH it onto GitHub. Used once to give older releases
+    # (which shipped with placeholder "BeastStrap <version>" bodies) a real changelog.
+    # Idempotent - notes are derived from git, so re-running writes the same text.
+    [switch]$BackfillNotes
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,7 +68,7 @@ Write-Host "Current: $current -> shipping $Version (tag $Tag)" -ForegroundColor 
 # ---------------------------------------------------------------------------
 # 2. bump the csproj
 # ---------------------------------------------------------------------------
-if (-not $DryRun) {
+if (-not $BackfillNotes -and -not $DryRun) {
     $raw = Get-Content $Csproj -Raw
     $raw = $raw.Replace("<Version>$current</Version>", "<Version>$Version</Version>")
     $raw = $raw.Replace("<FileVersion>$current.0</FileVersion>", "<FileVersion>$Version.0</FileVersion>")
@@ -70,7 +79,7 @@ if (-not $DryRun) {
 # ---------------------------------------------------------------------------
 # 3. build the single-file exe
 # ---------------------------------------------------------------------------
-if (-not $SkipBuild -and -not $DryRun) {
+if (-not $BackfillNotes -and -not $SkipBuild -and -not $DryRun) {
     Write-Host "Publishing single-file self-contained exe (couple of minutes)..." -ForegroundColor Yellow
     & dotnet publish (Join-Path $RepoRoot "MrExStrap\BeastStrap.csproj") -c Release -r win-x64 `
         --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --nologo -v q
@@ -92,6 +101,66 @@ if ([string]::IsNullOrWhiteSpace($Token) -and -not $DryRun) {
 }
 if ([string]::IsNullOrWhiteSpace($Token)) { throw "No GitHub token found. Sign in with 'git credential-manager github login' once, or pass -Token." }
 $Headers = @{ "User-Agent" = "BeastStrap"; "Authorization" = "Bearer $Token"; "Accept" = "application/vnd.github+json" }
+
+# ---------------------------------------------------------------------------
+# 4b. backfill release notes (see the -BackfillNotes switch). Iterates the
+#     published releases oldest->newest tag order, derives each release's
+#     changelog from git log between consecutive tags, and PATCHes the body.
+# ---------------------------------------------------------------------------
+if ($BackfillNotes) {
+    if ($DryRun) {
+        Write-Host "[DRY RUN] would backfill release notes from git history" -ForegroundColor Yellow
+        return
+    }
+
+    $tagsAsc = @(git -C $RepoRoot tag --sort=version:refname)
+    if ($tagsAsc.Count -eq 0) { throw "No local tags to derive notes from." }
+
+    $relList = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=100" -Headers @{ "User-Agent" = "BeastStrap" }
+    $updated = 0
+
+    foreach ($rel in $relList) {
+        $idx = [array]::IndexOf($tagsAsc, $rel.tag_name)
+        if ($idx -lt 0) { continue }
+
+        $prevTag = if ($idx -gt 0) { $tagsAsc[$idx - 1] } else { "" }
+        if ($prevTag) {
+            $commitLog = git -C $RepoRoot log --oneline --no-merges "$prevTag..$($rel.tag_name)"
+        } else {
+            $commitLog = git -C $RepoRoot log --oneline --no-merges $rel.tag_name
+        }
+
+        $noteLines = @($commitLog | Where-Object { $_ -and $_ -notmatch '^[0-9a-f]{7,40}\s+Release v?\d' } | ForEach-Object {
+            $m = [regex]::Match($_, '^[0-9a-f]{7,40}\s+(.*)$')
+            if ($m.Success) { "- $($m.Groups[1].Value)" } else { "- $_" }
+        })
+        if ($noteLines.Count -eq 0) { continue }
+
+        # Only touch placeholder bodies ("BeastStrap <version>", empty, "No release
+        # notes") so hand-written notes on old pre-fork releases are never clobbered.
+        $isPlaceholder = [string]::IsNullOrWhiteSpace($rel.body) -or
+            $rel.body -match '^\s*BeastStrap\s+v?\d' -or
+            $rel.body -match '^\s*No release notes\.?'
+
+        $newBody = ($noteLines -join "`n")
+        if (-not $isPlaceholder) {
+            Write-Host "  $($rel.tag_name): has written notes, skipped" -ForegroundColor DarkGray
+            continue
+        }
+
+        # PS 5.1 corrupts string bodies on the wire for non-ASCII text, so send the
+        # JSON as explicit UTF-8 bytes.
+        $json = @{ body = $newBody } | ConvertTo-Json
+        Invoke-RestMethod -Method Patch -Uri "https://api.github.com/repos/$Repo/releases/$($rel.id)" `
+            -Headers $Headers -ContentType "application/json; charset=utf-8" `
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($json)) | Out-Null
+        Write-Host "  $($rel.tag_name): notes updated ($($noteLines.Count) change(s))" -ForegroundColor Green
+        $updated++
+    }
+
+    Write-Host "`nBackfilled $updated release(s)." -ForegroundColor Cyan
+    return
+}
 
 # ---------------------------------------------------------------------------
 # 5. commit, push, tag
