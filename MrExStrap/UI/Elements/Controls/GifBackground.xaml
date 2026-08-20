@@ -11,11 +11,11 @@
     <!--
         User animated (GIF) wallpaper backdrop for hero surfaces (settings window, launch
         menu). Loaded and made visible by Utility.ThemeManager when the user picks a GIF —
-        otherwise collapsed so the deep ink + aurora show through. The code-behind decodes
-        the GIF's frames and cycles them on a DispatcherTimer honouring each frame's delay;
-        the timer only runs while the control is actually visible. The animation is layered
-        on top of the static wallpaper (when both are set) and dimmed with the same
-        hairline-tinted scrim so the glass content on top stays readable. Not hit-testable.
+        otherwise collapsed so the deep ink + aurora show through. Playback is driven by
+        XamlAnimatedGif (AnimationBehavior.SourceUri), which decodes and composites frames
+        itself, and is paused while the control is hidden. The animation is layered on top
+        of the static wallpaper (when both are set) and dimmed with the same hairline-tinted
+        scrim so the glass content on top stays readable. Not hit-testable.
     -->
     <Grid ClipToBounds="True">
         <Image x:Name="GifImage"
