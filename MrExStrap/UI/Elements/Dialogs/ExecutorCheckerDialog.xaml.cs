@@ -1,13 +1,16 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 using BeastStrap.Models.APIs;
 using BeastStrap.Models.Persistable;
+using BeastStrap.UI.Utility;
 
 namespace BeastStrap.UI.Elements.Dialogs
 {
@@ -22,6 +25,7 @@ namespace BeastStrap.UI.Elements.Dialogs
         private readonly List<ExecutorCheckerRow> _rows = new();
         private bool _isLoading;
         private string _sourceLabel = "weao.xyz";
+        private CheckerSort _sort = CheckerSort.Recent;
 
         public ExecutorCheckerDialog()
         {
@@ -49,18 +53,13 @@ namespace BeastStrap.UI.Elements.Dialogs
                     foreach (var exploit in result.Exploits)
                         _rows.Add(new ExecutorCheckerRow(exploit, profiles));
 
-                    // Updated executors first (green "Updated" badge), then most recently
-                    // updated within each group — the top of the list is "what's current".
-                    _rows.Sort((a, b) =>
-                    {
-                        if (a.IsUpdated != b.IsUpdated)
-                            return b.IsUpdated.CompareTo(a.IsUpdated);
-                        return b.UpdatedUtc.CompareTo(a.UpdatedUtc);
-                    });
+                    ApplySort();
 
                     // Fire-and-forget the logo fetch for each row.
                     foreach (var row in _rows)
                         _ = row.LoadLogoAsync();
+
+                    UpdateStats();
 
                     StatusText.Text = $"{_rows.Count} executor(s) · {_sourceLabel}";
                     ApplyFilter();
@@ -93,6 +92,40 @@ namespace BeastStrap.UI.Elements.Dialogs
             ExecutorList.Visibility = Visibility.Collapsed;
         }
 
+        // Default ordering: updated executors first (green "Updated" badge), then most
+        // recently updated within each group — the top of the list is "what's current".
+        private static int UpdatedFirst(ExecutorCheckerRow a, ExecutorCheckerRow b)
+        {
+            if (a.IsUpdated != b.IsUpdated)
+                return b.IsUpdated.CompareTo(a.IsUpdated);
+            return b.UpdatedUtc.CompareTo(a.UpdatedUtc);
+        }
+
+        // Applies the selected sort (see the "Sort" combo) to _rows.
+        private void ApplySort()
+        {
+            _rows.Sort(_sort switch
+            {
+                CheckerSort.Name => (a, b) => string.Compare(a.Title, b.Title, StringComparison.OrdinalIgnoreCase),
+                CheckerSort.Unc => (a, b) => a.UncSort != b.UncSort
+                    ? b.UncSort.CompareTo(a.UncSort)
+                    : UpdatedFirst(a, b),
+                CheckerSort.Cost => (a, b) => a.CostSort != b.CostSort
+                    ? a.CostSort.CompareTo(b.CostSort)
+                    : UpdatedFirst(a, b),
+                _ => UpdatedFirst,
+            });
+        }
+
+        private void UpdateStats()
+        {
+            StatTotal.Text = _rows.Count.ToString();
+            StatUpdated.Text = _rows.Count(r => r.IsUpdated && !r.HasIssues).ToString();
+            StatNotUpdated.Text = _rows.Count(r => !r.IsUpdated && !r.HasIssues).ToString();
+            StatIssues.Text = _rows.Count(r => r.HasIssues).ToString();
+            StatTracked.Text = _rows.Count(r => r.IsTracked).ToString();
+        }
+
         private void ApplyFilter()
         {
             string search = (SearchBox?.Text ?? "").Trim().ToLowerInvariant();
@@ -104,6 +137,18 @@ namespace BeastStrap.UI.Elements.Dialogs
                     r.Version.ToLowerInvariant().Contains(search));
 
             var items = filtered.ToList();
+            items.Sort(_sort switch
+            {
+                CheckerSort.Name => (a, b) => string.Compare(a.Title, b.Title, StringComparison.OrdinalIgnoreCase),
+                CheckerSort.Unc => (a, b) => a.UncSort != b.UncSort
+                    ? b.UncSort.CompareTo(a.UncSort)
+                    : UpdatedFirst(a, b),
+                CheckerSort.Cost => (a, b) => a.CostSort != b.CostSort
+                    ? a.CostSort.CompareTo(b.CostSort)
+                    : UpdatedFirst(a, b),
+                _ => UpdatedFirst,
+            });
+
             ExecutorList.ItemsSource = items;
             ExecutorList.Visibility = items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -125,6 +170,24 @@ namespace BeastStrap.UI.Elements.Dialogs
             if (ExecutorList == null) return;
             ApplyFilter();
         }
+
+        private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ExecutorList == null) return;
+
+            _sort = SortCombo.SelectedIndex switch
+            {
+                1 => CheckerSort.Name,
+                2 => CheckerSort.Unc,
+                3 => CheckerSort.Cost,
+                _ => CheckerSort.Recent,
+            };
+            ApplySort();
+            ApplyFilter();
+        }
+
+        private void ComboBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+            => ComboBoxScrollFix.HandleWheel(sender, e);
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e) => _ = LoadAsync();
 
@@ -179,6 +242,15 @@ namespace BeastStrap.UI.Elements.Dialogs
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
     }
 
+    // Sort modes for the checker board, driven by the toolbar combo.
+    internal enum CheckerSort
+    {
+        Recent, // default: updated first, then most recently updated
+        Name,
+        Unc,
+        Cost
+    }
+
     // One row in the checker: the WEAO executor plus (when applicable) the Versions
     // Manager profile tracking it and whether that profile matches the latest build.
     public class ExecutorCheckerRow : INotifyPropertyChanged
@@ -206,6 +278,19 @@ namespace BeastStrap.UI.Elements.Dialogs
         // True when WEAO says this executor is up to date with the current Roblox build
         // ("Updated" badge). Used so updated executors sort to the top of the board.
         public bool IsUpdated { get; }
+
+        // WEAO "hasIssues" flag — drives the amber "Issues" status and the stats strip.
+        public bool HasIssues { get; }
+
+        // Cost display ("Free" when WEAO says free or omits a price) + a numeric sort key
+        // so the "Cost (low → high)" sort works even with "$4.99"-style strings.
+        public string CostDisplay { get; }
+        public string CostColor { get; }
+        public string CostTooltip { get; }
+        public double CostSort { get; }
+
+        // Numeric UNC score for the "UNC (high → low)" sort.
+        public int UncSort { get; }
 
         // Feature chips rendered under the version line.
         public IReadOnlyList<ExecutorFeature> Features { get; }
@@ -247,8 +332,21 @@ namespace BeastStrap.UI.Elements.Dialogs
 
             UpdatedUtc = ParseDateUtc(exploit.UpdatedDate);
             IsUpdated = exploit.UpdateStatus;
+            HasIssues = exploit.HasIssues;
             VersionLine = $"v{Version} · updated {FormatRelative(UpdatedUtc)}";
             RbxLine = $"Supports {exploit.RbxVersion}";
+
+            // Cost: treat "Free", empty, or a missing price as free.
+            string cost = (exploit.Cost ?? "").Trim();
+            bool isFree = exploit.Free || string.IsNullOrWhiteSpace(cost)
+                || cost.Equals("free", StringComparison.OrdinalIgnoreCase);
+            CostDisplay = isFree ? "Free" : cost;
+            CostColor = isFree ? "#4CAF50" : "#E5E7EB";
+            CostTooltip = isFree
+                ? "Free to use."
+                : $"Cost per WEAO: {cost}.";
+            CostSort = isFree ? 0 : TryParseCost(cost);
+            UncSort = exploit.UncPercentage;
 
             StatusText = exploit.HasIssues ? "Issues" : exploit.UpdateStatus ? "Updated" : "Not Updated";
             StatusColor = exploit.HasIssues ? "#F59E0B" : exploit.UpdateStatus ? "#4CAF50" : "#EF4444";
@@ -312,6 +410,18 @@ namespace BeastStrap.UI.Elements.Dialogs
                     : $"Tracked as '{tracked.Name}' — update available ({exploit.RbxVersion})";
                 TrackedColor = upToDate ? "#3B82F6" : "#F59E0B";
             }
+        }
+
+        private static double TryParseCost(string cost)
+        {
+            // "4.99", "$4.99", "1,299" … → number. Anything unparseable sorts last.
+            var match = Regex.Match(cost, @"\d+(?:[.,]\d+)?");
+            if (!match.Success)
+                return double.MaxValue;
+            string num = match.Value.Replace(",", ".");
+            return double.TryParse(num, NumberStyles.Float, CultureInfo.InvariantCulture, out double v)
+                ? v
+                : double.MaxValue;
         }
 
         private static DateTime ParseDateUtc(string raw)
