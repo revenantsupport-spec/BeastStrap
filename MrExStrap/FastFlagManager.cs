@@ -47,6 +47,13 @@ namespace BeastStrap
 
             { "Rendering.Framerate", "DFIntTaskSchedulerTargetFps" },
 
+            // Roblox hard-caps the frame target at 240 via this flag (on by default). A custom
+            // framerate above 240 silently clamps to 240 unless it's turned off — that's the
+            // "360/Unlimited stays stuck at 240" report. Named so it doesn't start with
+            // "Rendering.Framerate" (SetPreset("Rendering.Framerate", ...) would otherwise set it
+            // to the framerate value instead of a bool).
+            { "Rendering.FpsCapTo240", "FFlagTaskSchedulerLimitTargetFpsTo2402" },
+
             // Rendering mode — force the graphics API (all three are on Roblox's allowlist).
             { "Rendering.Mode.D3D11", "FFlagDebugGraphicsPreferD3D11" },
             { "Rendering.Mode.Vulkan", "FFlagDebugGraphicsPreferVulkan" },
@@ -95,7 +102,7 @@ namespace BeastStrap
             { FramerateLimit.Fps165, "165" },
             { FramerateLimit.Fps240, "240" },
             { FramerateLimit.Fps360, "360" },
-            { FramerateLimit.Unlimited, "9999" }
+            { FramerateLimit.Unlimited, "2147483647" }
         };
 
         // all fflags are stored as strings
@@ -205,6 +212,13 @@ namespace BeastStrap
 
             if (GetPreset("Rendering.ManualFullscreen") != "False")
                 SetPreset("Rendering.ManualFullscreen", "False");
+
+            // A custom framerate is pointless while Roblox's 240 FPS hard cap is on (the cap flag
+            // defaults to True, so DFIntTaskSchedulerTargetFps above 240 clamps to 240). Normalise
+            // existing profiles the same way: if a framerate is set, make sure the cap is lifted.
+            // Lives before the OriginalProp snapshot so this never surfaces as an unsaved change.
+            if (GetPreset("Rendering.Framerate") is not null && GetPreset("Rendering.FpsCapTo240") != "False")
+                SetPreset("Rendering.FpsCapTo240", "False");
 
             // Snapshot AFTER the ManualFullscreen fixup, not before. Changed is
             // !OriginalProp.SequenceEqual(Prop), so baselining first meant any profile that didn't

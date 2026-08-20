@@ -166,8 +166,12 @@ namespace BeastStrap.Utility
                 {
                     Name = "Uncap FPS",
                     Category = "Performance",
-                    Description = "Raises the engine's frame target so the client can render past Roblox's 60 FPS default.",
-                    Flags = { ["DFIntTaskSchedulerTargetFps"] = "9999" }
+                    Description = "Raises the engine's frame target so the client can render past Roblox's 60 FPS default, and lifts the newer 240 FPS hard cap.",
+                    Flags =
+                    {
+                        ["DFIntTaskSchedulerTargetFps"] = "2147483647",
+                        ["FFlagTaskSchedulerLimitTargetFpsTo2402"] = "False"
+                    }
                 },
                 new()
                 {
@@ -176,7 +180,8 @@ namespace BeastStrap.Utility
                     Description = "A bundle for weaker machines: uncapped FPS, low textures, no MSAA, Vulkan preferred, no grass.",
                     Flags =
                     {
-                        ["DFIntTaskSchedulerTargetFps"] = "9999",
+                        ["DFIntTaskSchedulerTargetFps"] = "2147483647",
+                        ["FFlagTaskSchedulerLimitTargetFpsTo2402"] = "False",
                         ["DFFlagTextureQualityOverrideEnabled"] = "True",
                         ["DFIntTextureQualityOverride"] = "0",
                         ["FIntDebugForceMSAASamples"] = "1",

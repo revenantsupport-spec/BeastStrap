@@ -83,7 +83,14 @@ namespace BeastStrap.UI.ViewModels.Settings
         public FramerateLimit SelectedFramerateLimit
         {
             get => FramerateLimits.FirstOrDefault(x => x.Value == App.FastFlags.GetPreset("Rendering.Framerate")).Key;
-            set => App.FastFlags.SetPreset("Rendering.Framerate", FramerateLimits[value]);
+            set
+            {
+                App.FastFlags.SetPreset("Rendering.Framerate", FramerateLimits[value]);
+
+                // A custom framerate above 240 is silently clamped to 240 unless Roblox's hard
+                // cap flag is lifted. Turn it off for any non-default choice, clear it otherwise.
+                App.FastFlags.SetPreset("Rendering.FpsCapTo240", value == FramerateLimit.Default ? null : "False");
+            }
         }
 
         public bool ResetConfiguration
