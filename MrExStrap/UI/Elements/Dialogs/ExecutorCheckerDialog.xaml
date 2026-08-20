@@ -70,15 +70,25 @@
                     <ItemsControl x:Name="ExecutorList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="12,10" Margin="0,0,0,8" CornerRadius="8" BorderThickness="1.5"
-                                        BorderBrush="{Binding StatusColor}"
+                                <Border Padding="10,10" Margin="0,0,0,8" CornerRadius="8" BorderThickness="1"
+                                        BorderBrush="{DynamicResource GlassBorderBrush}"
                                         Background="{DynamicResource GlassFillBrush}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="46" />
-                                            <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
+
+                                        <!-- Status tab: slim strip on the left edge, green = up to date -->
+                                        <Border Grid.Column="0" Width="4" CornerRadius="2" Margin="0,2"
+                                                Background="{Binding StatusColor}" />
+
+                                        <Grid Grid.Column="1" Margin="10,0,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="46" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
                                         <!-- Logo -->
                                         <Border Grid.Column="0" Width="46" Height="46" CornerRadius="6" Background="#0D0D0D"
@@ -158,6 +168,7 @@
                                                        Click="PurchaseButton_Click"
                                                        Visibility="{Binding HasPurchase, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}" />
                                         </StackPanel>
+                                        </Grid>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
