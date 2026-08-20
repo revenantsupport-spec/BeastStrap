@@ -35,7 +35,7 @@ jobs:
 
     steps:
       # No submodules: only the script is needed, wpfui would just be dead weight.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Resolve tag
         id: tag
