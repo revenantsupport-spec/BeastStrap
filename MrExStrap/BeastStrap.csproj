@@ -12,8 +12,8 @@
     <Product>BeastStrap</Product>
     <AssemblyTitle>BeastStrap Live Channel Forcer</AssemblyTitle>
     <Company>BeastStrap</Company>
-    <Version>420.56.0</Version>
-    <FileVersion>420.56.0.0</FileVersion>
+    <Version>420.57.0</Version>
+    <FileVersion>420.57.0.0</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
