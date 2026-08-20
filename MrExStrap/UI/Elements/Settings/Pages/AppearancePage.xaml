@@ -143,6 +143,22 @@
         <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding WallpaperLocation}" />
 
+        <!-- Animated background (GIF) -->
+        <TextBlock Text="Animated background" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <controls:OptionControl Header="GIF / animated wallpaper" Description="A looping animated background behind the settings pages and launch menu. Picking one turns this on. Layers on top of the custom wallpaper above.">
+            <StackPanel Orientation="Horizontal">
+                <ui:ToggleSwitch IsChecked="{Binding EnableGifWallpaper, Mode=TwoWay}" />
+                <ui:Button Margin="8,0,0,0" Icon="FolderOpen24" Content="Browse" Command="{Binding BrowseGifWallpaperCommand}" />
+                <ui:Button Margin="8,0,0,0" Icon="Delete24" Content="Clear" Command="{Binding ClearGifWallpaperCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+        <controls:OptionControl Header="GIF wallpaper strength" Description="How strongly the animation shows through (0–100%).">
+            <Slider Width="200" Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                    Value="{Binding GifWallpaperOpacity, Mode=TwoWay, Converter={StaticResource OpacityPercentConverter}}" />
+        </controls:OptionControl>
+        <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding GifWallpaperLocation}" />
+
         <!-- App icon -->
         <TextBlock Text="App icon" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
         <controls:OptionControl Header="Custom app icon" Description="Swap the icon shown in the taskbar, alt-tab and system tray. Pick an .ico or image file. Applies to open windows now and everywhere on the next launch.">

@@ -34,6 +34,9 @@
              with the body so the row gets a definite height and the image doesn't collapse. -->
         <controls:WallpaperBackground Grid.Row="1" />
 
+        <!-- User animated (GIF) backdrop, layered above the wallpaper (collapsed unless set). -->
+        <controls:GifBackground Grid.Row="1" SourcePath="{DynamicResource GifBackgroundPath}" />
+
         <Grid Grid.Row="1" Margin="4,4,4,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="292" />

@@ -39,6 +39,15 @@ namespace BeastStrap.Models.Persistable
         // 0..1 how strong the wallpaper shows through behind the glass content.
         public double WallpaperOpacity { get; set; } = 0.6;
 
+        // user GIF / animated background (BeastStrap fork feature) — a looping animated
+        // background behind the settings pages and launch menu, layered on top of the
+        // static wallpaper when both are set. Rendered and animated by the GifBackground
+        // control; the path / visibility / opacity are published as app resources.
+        public bool EnableGifWallpaper { get; set; } = false;
+        public string GifWallpaperLocation { get; set; } = "";
+        // 0..1 how strongly the animation shows through behind the glass content.
+        public double GifWallpaperOpacity { get; set; } = 0.4;
+
         // integration configuration
         public bool EnableActivityTracking { get; set; } = true;
         public bool UseDiscordRichPresence { get; set; } = true;

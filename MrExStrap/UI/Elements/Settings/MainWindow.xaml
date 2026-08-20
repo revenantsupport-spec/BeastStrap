@@ -31,6 +31,9 @@
         <!-- User wallpaper backdrop (collapsed unless the user sets one) -->
         <controls:WallpaperBackground Grid.Row="1" />
 
+        <!-- User animated (GIF) backdrop, layered above the wallpaper (collapsed unless set) -->
+        <controls:GifBackground Grid.Row="1" SourcePath="{DynamicResource GifBackgroundPath}" />
+
         <ui:Snackbar
             x:Name="AlreadyRunningSnackbar"
             Title="{x:Static resources:Strings.Menu_AlreadyRunning_Title}"

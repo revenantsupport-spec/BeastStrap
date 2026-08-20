@@ -222,6 +222,43 @@ namespace BeastStrap.UI.ViewModels.Settings
             EnableWallpaper = false;
         }
 
+        // ===== Animated (GIF) background — mirrors the custom wallpaper above =====
+        public ICommand BrowseGifWallpaperCommand => new RelayCommand(BrowseGifWallpaper);
+        public ICommand ClearGifWallpaperCommand => new RelayCommand(ClearGifWallpaper);
+
+        public bool EnableGifWallpaper
+        {
+            get => App.Settings.Prop.EnableGifWallpaper;
+            set { App.Settings.Prop.EnableGifWallpaper = value; OnPropertyChanged(nameof(EnableGifWallpaper)); ApplyTheme(); }
+        }
+
+        public string GifWallpaperLocation
+        {
+            get => App.Settings.Prop.GifWallpaperLocation;
+            set { App.Settings.Prop.GifWallpaperLocation = value; OnPropertyChanged(nameof(GifWallpaperLocation)); ApplyTheme(); }
+        }
+
+        public double GifWallpaperOpacity
+        {
+            get => App.Settings.Prop.GifWallpaperOpacity;
+            set { App.Settings.Prop.GifWallpaperOpacity = value; ApplyTheme(); }
+        }
+
+        private void BrowseGifWallpaper()
+        {
+            var dialog = new OpenFileDialog { Filter = "Image and GIF files|*.gif;*.png;*.jpg;*.jpeg;*.bmp;*.webp" };
+            if (dialog.ShowDialog() != true)
+                return;
+            GifWallpaperLocation = dialog.FileName;
+            EnableGifWallpaper = true;
+        }
+
+        private void ClearGifWallpaper()
+        {
+            GifWallpaperLocation = "";
+            EnableGifWallpaper = false;
+        }
+
         private void MarkCustom()
         {
             App.Settings.Prop.SelectedThemePreset = "Custom";

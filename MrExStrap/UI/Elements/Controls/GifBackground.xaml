@@ -1,0 +1,26 @@
+<UserControl x:Class="BeastStrap.UI.Elements.Controls.GifBackground"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             IsHitTestVisible="False"
+             Visibility="{DynamicResource GifBackgroundVisibility}"
+             Opacity="{DynamicResource GifBackgroundOpacity}"
+             d:DesignHeight="480" d:DesignWidth="820">
+    <!--
+        User animated (GIF) wallpaper backdrop for hero surfaces (settings window, launch
+        menu). Loaded and made visible by Utility.ThemeManager when the user picks a GIF —
+        otherwise collapsed so the deep ink + aurora show through. The code-behind decodes
+        the GIF's frames and cycles them on a DispatcherTimer honouring each frame's delay;
+        the timer only runs while the control is actually visible. The animation is layered
+        on top of the static wallpaper (when both are set) and dimmed with the same
+        hairline-tinted scrim so the glass content on top stays readable. Not hit-testable.
+    -->
+    <Grid ClipToBounds="True">
+        <Image x:Name="GifImage"
+               Stretch="UniformToFill"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <Border Background="{DynamicResource BrandInkBrush}" Opacity="0.45" />
+    </Grid>
+</UserControl>

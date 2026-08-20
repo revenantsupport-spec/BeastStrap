@@ -128,6 +128,10 @@ namespace BeastStrap.Utility
             // file the background layer just stays on the deep ink (aurora still applies on top).
             ApplyWallpaper(res);
 
+            // Animated (GIF) wallpaper — a looping GIF layered above the static wallpaper. The
+            // GifBackground control consumes these resources and animates the frames itself.
+            ApplyGifWallpaper(res);
+
             // Accent — DynamicResource-backed across every WPF-UI control, so this is fully live.
             Accent.Apply(cyan, ThemeType.Dark);
 
@@ -140,7 +144,8 @@ namespace BeastStrap.Utility
             return string.Join("|", p.Accent, p.GradientStart, p.GradientEnd, p.Purple, p.Background,
                 p.Surface, p.Hairline, p.Glow, p.GradientDirection, p.GlowIntensity,
                 s?.EnableAurora, s?.EnableGlass, s?.EnableGlow,
-                s?.EnableWallpaper, s?.WallpaperLocation, s?.WallpaperOpacity);
+                s?.EnableWallpaper, s?.WallpaperLocation, s?.WallpaperOpacity,
+                s?.EnableGifWallpaper, s?.GifWallpaperLocation, s?.GifWallpaperOpacity);
         }
 
         private static void ApplyWallpaper(ResourceDictionary res)
@@ -174,6 +179,25 @@ namespace BeastStrap.Utility
             res["WallpaperImageSource"] = null;
             res["WallpaperVisibility"] = Visibility.Collapsed;
             res["WallpaperOpacity"] = 1.0;
+        }
+
+        private static void ApplyGifWallpaper(ResourceDictionary res)
+        {
+            var s = App.Settings?.Prop;
+            bool enabled = s?.EnableGifWallpaper == true && !string.IsNullOrWhiteSpace(s.GifWallpaperLocation);
+            string? path = enabled ? s!.GifWallpaperLocation.Trim() : null;
+
+            if (path != null && File.Exists(path))
+            {
+                res["GifBackgroundPath"] = path;
+                res["GifBackgroundVisibility"] = Visibility.Visible;
+                res["GifBackgroundOpacity"] = Math.Clamp(s!.GifWallpaperOpacity, 0.1, 1.0);
+                return;
+            }
+
+            res["GifBackgroundPath"] = "";
+            res["GifBackgroundVisibility"] = Visibility.Collapsed;
+            res["GifBackgroundOpacity"] = 1.0;
         }
 
         private static SolidColorBrush Brush(Color c)
