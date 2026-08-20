@@ -119,11 +119,13 @@ namespace BeastStrap.UI.Elements.Dialogs
 
         private void UpdateStats()
         {
-            StatTotal.Text = _rows.Count.ToString();
-            StatUpdated.Text = _rows.Count(r => r.IsUpdated && !r.HasIssues).ToString();
-            StatNotUpdated.Text = _rows.Count(r => !r.IsUpdated && !r.HasIssues).ToString();
-            StatIssues.Text = _rows.Count(r => r.HasIssues).ToString();
-            StatTracked.Text = _rows.Count(r => r.IsTracked).ToString();
+            int updated = _rows.Count(r => r.IsUpdated && !r.HasIssues);
+            int notUpdated = _rows.Count(r => !r.IsUpdated && !r.HasIssues);
+            int issues = _rows.Count(r => r.HasIssues);
+            int tracked = _rows.Count(r => r.IsTracked);
+            SummaryText.Text =
+                $"{_rows.Count} Windows executors · {updated} up to date · {notUpdated} not updated · " +
+                $"{issues} with issues · {tracked} tracked · {_sourceLabel}";
         }
 
         private void ApplyFilter()
@@ -283,10 +285,9 @@ namespace BeastStrap.UI.Elements.Dialogs
         public bool HasIssues { get; }
 
         // Cost display ("Free" when WEAO says free or omits a price) + a numeric sort key
-        // so the "Cost (low → high)" sort works even with "$4.99"-style strings.
+        // so the "Cost (low → high)" sort works even with "$4.99"-style strings. Cost is
+        // folded into the version line; the numeric key drives the sort.
         public string CostDisplay { get; }
-        public string CostColor { get; }
-        public string CostTooltip { get; }
         public double CostSort { get; }
 
         // Numeric UNC score for the "UNC (high → low)" sort.
@@ -333,7 +334,7 @@ namespace BeastStrap.UI.Elements.Dialogs
             UpdatedUtc = ParseDateUtc(exploit.UpdatedDate);
             IsUpdated = exploit.UpdateStatus;
             HasIssues = exploit.HasIssues;
-            VersionLine = $"v{Version} · updated {FormatRelative(UpdatedUtc)}";
+            VersionLine = $"v{Version} · updated {FormatRelative(UpdatedUtc)} · {CostDisplay}";
             RbxLine = $"Supports {exploit.RbxVersion}";
 
             // Cost: treat "Free", empty, or a missing price as free.
@@ -341,10 +342,6 @@ namespace BeastStrap.UI.Elements.Dialogs
             bool isFree = exploit.Free || string.IsNullOrWhiteSpace(cost)
                 || cost.Equals("free", StringComparison.OrdinalIgnoreCase);
             CostDisplay = isFree ? "Free" : cost;
-            CostColor = isFree ? "#4CAF50" : "#E5E7EB";
-            CostTooltip = isFree
-                ? "Free to use."
-                : $"Cost per WEAO: {cost}.";
             CostSort = isFree ? 0 : TryParseCost(cost);
             UncSort = exploit.UncPercentage;
 
