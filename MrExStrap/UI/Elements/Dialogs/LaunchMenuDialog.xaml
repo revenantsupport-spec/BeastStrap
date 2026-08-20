@@ -13,8 +13,8 @@
         Title="BeastStrap"
         MinWidth="0"
         MinHeight="0"
-        Width="600"
-        Height="500"
+        Width="660"
+        Height="560"
         ResizeMode="NoResize"
         Background="{ui:ThemeResource ApplicationBackgroundBrush}"
         ExtendsContentIntoTitleBar="True"
@@ -34,58 +34,99 @@
              with the body so the row gets a definite height and the image doesn't collapse. -->
         <controls:WallpaperBackground Grid.Row="1" />
 
-        <Grid Grid.Row="1" Margin="4,4,4,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="292" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <Grid Grid.Row="1" Margin="14,6,14,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-                <Grid Grid.Column="0" VerticalAlignment="Center" Margin="14,0,6,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+            <!-- Brand header: icon + wordmark + version, channel-lock chip pinned right. -->
+            <Border Grid.Row="0" Margin="4,0,4,12" Padding="14,12" CornerRadius="12"
+                    Background="{DynamicResource GlassFillBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
+                    Effect="{DynamicResource CardShadowEffect}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                    <Image Width="48" Height="48" Source="pack://application:,,,/Resources/BeastStrapIcon.png"
+                           VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"
+                           Effect="{DynamicResource BrandGlowSoft}" />
 
-                        <Image Grid.Column="0" Width="72" Height="72" Source="pack://application:,,,/Resources/BeastStrapIcon.png"
-                               RenderOptions.BitmapScalingMode="HighQuality" Effect="{DynamicResource BrandGlowSoft}" />
-                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="BeastStrap" FontSize="22" FontWeight="SemiBold" LineHeight="24" />
-                            <TextBlock Text="{Binding Version, Mode=OneTime}" VerticalAlignment="Bottom" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                            <Border Margin="0,8,0,0" Padding="10,4" CornerRadius="10" HorizontalAlignment="Left"
-                                    Background="{Binding ChannelLockBackground, Mode=OneTime}">
-                                <TextBlock Text="{Binding ChannelLockText, Mode=OneTime}" FontSize="11" FontWeight="SemiBold" Foreground="White" />
-                            </Border>
-                        </StackPanel>
-                    </Grid>
-
-                    <StackPanel Grid.Row="1" HorizontalAlignment="Center">
-                        <ui:Hyperlink Icon="QuestionCircle48" Content="{x:Static resources:Strings.About_Title}" Command="{Binding LaunchAboutCommand, Mode=OneTime}" HorizontalAlignment="Center" />
-                        <ui:Hyperlink Icon="PeopleCommunity28" Content="Roblox Exploit Community" NavigateUri="https://robloxscripts.com/" HorizontalAlignment="Center" />
-                        <ui:Hyperlink Icon="PlayCircle28" Content="YouTube" NavigateUri="https://www.youtube.com/@RealMrExploit-f5h" HorizontalAlignment="Center" />
-                        <ui:Hyperlink Icon="ArrowClockwise24" Content="Check for updates" Command="{Binding CheckForUpdatesCommand, Mode=OneTime}" HorizontalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="BeastStrap" Style="{StaticResource TitleText}" LineHeight="26" />
+                        <TextBlock Text="{Binding Version, Mode=OneTime}" Style="{StaticResource CaptionText}"
+                                   FontFamily="{StaticResource BrandMonoFont}" Margin="0,2,0,0" />
                     </StackPanel>
-                </Grid>
 
-                <StackPanel Grid.Column="1" Margin="10,4,16,4" VerticalAlignment="Center">
+                    <Border Grid.Column="2" VerticalAlignment="Center" Padding="10,4" CornerRadius="10"
+                            Background="{Binding ChannelLockBackground, Mode=OneTime}">
+                        <TextBlock Text="{Binding ChannelLockText, Mode=OneTime}" FontSize="11" FontWeight="SemiBold" Foreground="White" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Body: quick links on the left, launch actions on the right. -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="258" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: community / links card -->
+                <Border Grid.Column="0" Margin="0,0,12,0" Padding="10" CornerRadius="12"
+                        Background="{DynamicResource GlassFillBrush}"
+                        BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1"
+                        VerticalAlignment="Center">
+                    <StackPanel>
+                        <TextBlock Text="COMMUNITY &amp; LINKS" Style="{StaticResource BrandSectionHeader}" Margin="6,2,0,6" />
+
+                        <ui:CardAction Margin="0,2,0,0" TabIndex="4" Icon="QuestionCircle48"
+                                       Command="{Binding LaunchAboutCommand, Mode=OneTime}">
+                            <StackPanel>
+                                <TextBlock FontSize="13" Text="{x:Static resources:Strings.About_Title}" />
+                            </StackPanel>
+                        </ui:CardAction>
+
+                        <ui:Hyperlink Icon="PeopleCommunity28" Content="Roblox Exploit Community"
+                                      NavigateUri="https://robloxscripts.com/" Margin="10,6,0,0" FontSize="13" />
+
+                        <ui:Hyperlink Icon="PlayCircle28" Content="YouTube"
+                                      NavigateUri="https://www.youtube.com/@RealMrExploit-f5h" Margin="10,4,0,0" FontSize="13" />
+
+                        <ui:CardAction Margin="0,6,0,0" TabIndex="5" Icon="ArrowClockwise24"
+                                       Command="{Binding CheckForUpdatesCommand, Mode=OneTime}">
+                            <StackPanel>
+                                <TextBlock FontSize="13" Text="Check for updates" />
+                            </StackPanel>
+                        </ui:CardAction>
+                    </StackPanel>
+                </Border>
+
+                <!-- Right: launch actions -->
+                <StackPanel Grid.Column="1" Margin="10,4,8,4" VerticalAlignment="Center">
                     <!-- Hero launch CTA: clean cyan->green gradient (glow removed, glassy look). -->
-                    <ui:Button x:Name="LaunchButton" TabIndex="0" Appearance="Primary" Icon="Play24" FontSize="15" Height="54"
+                    <ui:Button x:Name="LaunchButton" TabIndex="0" Appearance="Primary" Icon="Play24" FontSize="15" Height="58"
                                Margin="0,0,0,10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                Content="{x:Static resources:Strings.LaunchMenu_LaunchRoblox}"
                                Command="{Binding LaunchRobloxCommand, Mode=OneTime}" />
 
-                    <ui:CardAction Margin="0,4,0,0" TabIndex="1" Icon="Settings28" Command="{Binding LaunchSettingsCommand, Mode=OneTime}">
+                    <!-- Roblox Studio launch (wired into the existing LaunchRobloxStudioCommand). -->
+                    <ui:Button TabIndex="1" Appearance="Secondary" Icon="Code24" FontSize="13" Height="42"
+                               Margin="0,0,0,10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                               Content="{x:Static resources:Strings.LaunchMenu_LaunchRobloxStudio}"
+                               Command="{Binding LaunchRobloxStudioCommand, Mode=OneTime}" />
+
+                    <ui:CardAction Margin="0,4,0,0" TabIndex="2" Icon="Settings28" Command="{Binding LaunchSettingsCommand, Mode=OneTime}">
                         <StackPanel>
                             <TextBlock FontSize="14" Text="{x:Static resources:Strings.LaunchMenu_ConfigureSettings}" />
                         </StackPanel>
                     </ui:CardAction>
 
-                    <ui:CardAction Margin="0,8,0,0" TabIndex="2" Icon="ArrowReset24" Command="{Binding ResetToStockCommand, Mode=OneTime}">
+                    <ui:CardAction Margin="0,8,0,0" TabIndex="3" Icon="ArrowReset24" Command="{Binding ResetToStockCommand, Mode=OneTime}">
                         <StackPanel>
                             <TextBlock FontSize="14" TextWrapping="Wrap" Text="Reset to non-BeastStrap setup" />
                             <TextBlock Margin="0,2,0,0" FontSize="11" TextWrapping="Wrap"
@@ -95,5 +136,6 @@
                     </ui:CardAction>
                 </StackPanel>
             </Grid>
+        </Grid>
     </Grid>
 </base:WpfUiWindow>
