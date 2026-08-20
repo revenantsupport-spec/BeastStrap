@@ -123,6 +123,29 @@ git -C $RepoRoot push origin $Tag
 if ($LASTEXITCODE -ne 0) { throw "git push tag failed" }
 
 # ---------------------------------------------------------------------------
+# 5b. generate release notes from commits since the last tag, so the GitHub
+#     release body is a real changelog ("what changed / what was added") instead
+#     of just the version number. Filtered to feature commits (no merges, no
+#     "Release vX" bumps).
+# ---------------------------------------------------------------------------
+$prevTag = git -C $RepoRoot tag --sort=-version:refname | Where-Object { $_ -ne $Tag } | Select-Object -First 1
+if ($prevTag) {
+    $commitLog = git -C $RepoRoot log --oneline --no-merges "$prevTag..HEAD"
+} else {
+    $commitLog = git -C $RepoRoot log --oneline --no-merges
+}
+$noteLines = @($commitLog | Where-Object { $_ -and $_ -notmatch '^[0-9a-f]{7,40}\s+Release v?\d' } | ForEach-Object {
+    $m = [regex]::Match($_, '^[0-9a-f]{7,40}\s+(.*)$')
+    if ($m.Success) { "- $($m.Groups[1].Value)" } else { "- $_" }
+})
+if ($noteLines.Count -eq 0) {
+    $notes = "BeastStrap $Version"
+} else {
+    $notes = ($noteLines -join "`n")
+}
+Write-Host "Release notes: $($noteLines.Count) change(s) since $(if ($prevTag) { $prevTag } else { 'the beginning' })" -ForegroundColor Yellow
+
+# ---------------------------------------------------------------------------
 # 6. create the release and upload the exe (published immediately, no CI needed)
 # ---------------------------------------------------------------------------
 $body = @{
@@ -130,7 +153,7 @@ $body = @{
     name       = "BeastStrap $Version"
     draft      = $false
     prerelease = $false
-    body       = "BeastStrap $Version"
+    body       = $notes
 } | ConvertTo-Json
 
 Write-Host "Creating GitHub release $Tag ..." -ForegroundColor Yellow

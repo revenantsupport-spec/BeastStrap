@@ -114,5 +114,13 @@ d:DesignHeight="620" d:DesignWidth="780"
                    Appearance="Secondary" Icon="Flash24" FontSize="14"
                    Content="Executor checker"
                    Click="ExecutorCheckerButton_Click" />
+
+        <!-- Version history — mirrors the executor checker button on the top-left.
+             Opens the app's own GitHub release changelog. -->
+        <ui:Button Margin="26,24,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                   Padding="14,8" Height="40"
+                   Appearance="Secondary" Icon="History32" FontSize="14"
+                   Content="Version history"
+                   Click="VersionHistoryButton_Click" />
     </Grid>
 </ui:UiPage>

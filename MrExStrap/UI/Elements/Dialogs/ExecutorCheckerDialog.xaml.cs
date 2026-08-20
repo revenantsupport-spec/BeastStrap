@@ -193,7 +193,75 @@ namespace BeastStrap.UI.Elements.Dialogs
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e) => _ = LoadAsync();
 
-        private void WebsiteButton_Click(object sender, RoutedEventArgs e)
+        // "Set active": pins the executor's currently supported Roblox version as the
+        // active Versions Manager profile (creating the executor-tracked profile if the
+        // user never added one). The next launch uses — and downloads if needed — that
+        // build, so this is the one-click bridge from "the checker says compatible" to
+        // "actually launch on it".
+        private void PinButton_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is not ExecutorCheckerRow row) return;
+
+            try
+            {
+                if (!VersionGuidValidator.IsWellFormed(row.Exploit.RbxVersion))
+                {
+                    Frontend.ShowMessageBox(
+                        $"WEAO didn't report a usable supported version for '{row.Title}' right now.\n\n" +
+                        "Try again once the executor updates.",
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                var profiles = App.Settings.Prop.VersionProfiles;
+                var profile = profiles.FirstOrDefault(p =>
+                    !string.IsNullOrWhiteSpace(p.ExecutorRefreshKey) &&
+                    string.Equals(p.ExecutorRefreshKey, row.Title, StringComparison.OrdinalIgnoreCase));
+
+                if (profile is null)
+                {
+                    profile = new VersionProfile
+                    {
+                        Name = row.Title,
+                        VersionGuid = row.Exploit.RbxVersion,
+                        ExecutorTitle = row.Title,
+                        ExecutorLogoUrl = row.Exploit.Slug?.Logo,
+                        ExecutorRefreshKey = row.Title
+                    };
+                    profiles.Add(profile);
+                }
+                else
+                {
+                    // Keep the display fields current even if the user renamed things.
+                    profile.Name = row.Title;
+                    profile.ExecutorTitle = row.Title;
+                    profile.ExecutorLogoUrl = row.Exploit.Slug?.Logo;
+                    profile.ExecutorRefreshKey = row.Title;
+                }
+
+                profile.VersionGuid = row.Exploit.RbxVersion;
+                profile.InstalledVersionGuid = row.Exploit.RbxVersion;
+                App.Settings.Prop.ActiveVersionProfileId = profile.Id;
+                App.Settings.Save();
+
+                row.MarkActive();
+
+                App.Logger.WriteLine("ExecutorCheckerDialog::Pin",
+                    $"Pinned '{row.Title}' to {row.Exploit.RbxVersion} as active profile '{profile.Name}'.");
+
+                Frontend.ShowMessageBox(
+                    $"'{row.Title}' is now the active version profile.\n\n" +
+                    $"It will launch on {row.Exploit.RbxVersion}. Roblox downloads that build first if it isn't installed yet.",
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteException("ExecutorCheckerDialog::Pin", ex);
+                Frontend.ShowMessageBox($"Couldn't set the active profile ({ex.Message}).", MessageBoxImage.Error);
+            }
+        }
+
+private void WebsiteButton_Click(object sender, RoutedEventArgs e)
         {
             if ((sender as FrameworkElement)?.DataContext is not ExecutorCheckerRow row) return;
             if (string.IsNullOrWhiteSpace(row.WebsiteLink)) return;
@@ -257,6 +325,10 @@ namespace BeastStrap.UI.Elements.Dialogs
     // Manager profile tracking it and whether that profile matches the latest build.
     public class ExecutorCheckerRow : INotifyPropertyChanged
     {
+        // The raw WEAO entry this row was built from. Kept for the "Set active" pin
+        // button, which writes the executor's current supported version onto the
+        // active Versions Manager profile.
+        public WeaoExploit Exploit { get; }
         public string Title { get; }
         public string Version { get; }
         public string LetterPlaceholder { get; }
@@ -309,6 +381,16 @@ namespace BeastStrap.UI.Elements.Dialogs
         public string TrackedLine { get; }
         public string TrackedColor { get; }
 
+        // "Set active" pin state. True when the executor's profile is the currently
+        // active Versions Manager profile (the one the next launch uses). Mutable so
+        // the pin button can flip it without rebuilding the list.
+        public bool IsActive { get; private set; }
+        public string PinButtonText => IsActive ? "Active" : "Set active";
+        public bool PinButtonEnabled => !IsActive;
+        public string PinButtonTooltip => IsActive
+            ? "This executor's profile is already the active version."
+            : "Pin this executor's supported Roblox version as the active profile. The next launch uses (and downloads if needed) that build.";
+
         // For sorting: most-recently-updated first by default.
         public DateTime UpdatedUtc { get; }
 
@@ -323,6 +405,7 @@ namespace BeastStrap.UI.Elements.Dialogs
 
         public ExecutorCheckerRow(WeaoExploit exploit, IReadOnlyList<VersionProfile> profiles)
         {
+            Exploit = exploit;
             Title = exploit.Title;
             Version = string.IsNullOrWhiteSpace(exploit.Version) ? "—" : exploit.Version;
             WebsiteLink = exploit.WebsiteLink ?? "";
@@ -394,6 +477,8 @@ namespace BeastStrap.UI.Elements.Dialogs
                 string.Equals(p.ExecutorRefreshKey, exploit.Title, StringComparison.OrdinalIgnoreCase));
 
             IsTracked = tracked != null;
+            IsActive = tracked != null &&
+                string.Equals(tracked.Id, App.Settings.Prop.ActiveVersionProfileId, StringComparison.Ordinal);
             if (tracked == null)
             {
                 TrackedLine = "";
@@ -478,6 +563,17 @@ namespace BeastStrap.UI.Elements.Dialogs
 
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        // Flipped by the dialog after a successful pin so the button reads "Active"
+        // without rebuilding the whole list.
+        public void MarkActive()
+        {
+            IsActive = true;
+            OnPropertyChanged(nameof(IsActive));
+            OnPropertyChanged(nameof(PinButtonText));
+            OnPropertyChanged(nameof(PinButtonEnabled));
+            OnPropertyChanged(nameof(PinButtonTooltip));
+        }
     }
 
     // One colored feature chip ("sUNC 100%", "Decompiler", …) on an executor row.

@@ -33,5 +33,15 @@ namespace BeastStrap.UI.Elements.Settings.Pages
             };
             dialog.ShowDialog();
         }
+
+        // Opens the app's own GitHub release changelog.
+        private void VersionHistoryButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new BeastStrap.UI.Elements.Dialogs.VersionHistoryDialog
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            dialog.ShowDialog();
+        }
     }
 }

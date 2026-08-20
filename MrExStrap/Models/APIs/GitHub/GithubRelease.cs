@@ -14,6 +14,12 @@ namespace BeastStrap.Models.APIs.GitHub
         [JsonPropertyName("created_at")]
         public string CreatedAt { get; set; } = null!;
 
+        [JsonPropertyName("published_at")]
+        public string PublishedAt { get; set; } = null!;
+
+        [JsonPropertyName("html_url")]
+        public string HtmlUrl { get; set; } = null!;
+
         [JsonPropertyName("assets")]
         public List<GithubReleaseAsset>? Assets { get; set; }
     }

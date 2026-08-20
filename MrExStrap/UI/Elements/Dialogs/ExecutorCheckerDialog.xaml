@@ -159,7 +159,10 @@
 
                                         <!-- Buttons column -->
                                         <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="12,0,0,0">
-                                            <ui:Button MinWidth="88" Padding="8,4" Icon="Open24" Content="Website"
+                                            <ui:Button MinWidth="88" Padding="8,4" Icon="Play24" Content="{Binding PinButtonText}"
+                                                       IsEnabled="{Binding PinButtonEnabled}" ToolTip="{Binding PinButtonTooltip}"
+                                                       Click="PinButton_Click" />
+                                            <ui:Button Margin="0,6,0,0" MinWidth="88" Padding="8,4" Icon="Open24" Content="Website"
                                                        Click="WebsiteButton_Click" />
                                             <ui:Button Margin="0,6,0,0" MinWidth="88" Padding="8,4" Icon="People24" Content="Discord"
                                                        Click="DiscordButton_Click"
