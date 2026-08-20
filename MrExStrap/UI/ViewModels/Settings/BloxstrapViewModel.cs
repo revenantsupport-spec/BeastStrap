@@ -123,6 +123,15 @@ namespace BeastStrap.UI.ViewModels.Settings
             set { App.Settings.Prop.NotifyOnExecutorUpdate = value; OnPropertyChanged(nameof(NotifyOnExecutorUpdate)); }
         }
 
+        // v420.50.1: auto-downgrade protection for executor-tracked profiles. When
+        // the executor is down for the newest Roblox build, prompt once per Roblox
+        // update before pinning the profile down to the version it still supports.
+        public bool AutoDowngradeExecutors
+        {
+            get => App.Settings.Prop.AutoDowngradeExecutors;
+            set { App.Settings.Prop.AutoDowngradeExecutors = value; OnPropertyChanged(nameof(AutoDowngradeExecutors)); }
+        }
+
         // v420.29.5: toast when a newer BeastStrap release is available. Default ON.
         public bool NotifyOnAppUpdate
         {

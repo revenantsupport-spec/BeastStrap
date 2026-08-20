@@ -52,6 +52,13 @@ namespace BeastStrap.Models.Persistable
         // instead of every launcher open / tray poll.
         public string LastNotifiedExecutorHash { get; set; } = "";
 
+        // v420.50.1+: the LIVE hash for which the user already answered the
+        // "Roblox updated, <executor> isn't ready — downgrade?" prompt (accept OR
+        // decline). Stops the launcher re-asking on every launch while the same
+        // Roblox update is pending. Cleared automatically once the executor catches
+        // up, so the next Roblox update asks fresh.
+        public string DowngradeDismissedForHash { get; set; } = "";
+
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     }
 }

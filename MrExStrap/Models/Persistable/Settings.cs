@@ -129,6 +129,14 @@ namespace BeastStrap.Models.Persistable
         public bool NotifyOnLiveChange { get; set; } = false;
         public bool NotifyOnExecutorUpdate { get; set; } = false;
 
+        // v420.50.1+: auto-downgrade protection. When the active Versions Manager
+        // profile tracks an executor on WEAO and that executor isn't updated for the
+        // newest LIVE Roblox build yet, prompt once per Roblox update to pin the
+        // profile to the version the executor still supports. Default ON; the prompt
+        // always asks before acting (and the pin follows back to LIVE automatically
+        // once the executor catches up).
+        public bool AutoDowngradeExecutors { get; set; } = true;
+
         // v420.29.5+: pop a toast when a newer BeastStrap release is available on
         // GitHub. Default ON so users always find out about updates even if they never
         // open the launch menu (e.g. tray-only users). Independent of the existing

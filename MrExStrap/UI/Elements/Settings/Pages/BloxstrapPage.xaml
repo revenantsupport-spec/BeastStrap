@@ -104,6 +104,13 @@
             <ui:ToggleSwitch IsChecked="{Binding NotifyOnExecutorUpdate, Mode=TwoWay}" />
         </controls:OptionControl>
 
+        <!-- v420.50.1: Auto-downgrade protection -->
+        <controls:OptionControl Margin="0,8,0,0"
+            Header="Auto-downgrade when your executor breaks"
+            Description="When a Roblox update ships before your executor is ready, BeastStrap asks if you want to pin your profile to the last Roblox version your executor still works with. It switches back to the newest Roblox automatically once the executor updates. On by default — turn off to never be asked.">
+            <ui:ToggleSwitch IsChecked="{Binding AutoDowngradeExecutors, Mode=TwoWay}" />
+        </controls:OptionControl>
+
         <!-- v420.29.5: BeastStrap update toast -->
         <controls:OptionControl Margin="0,8,0,0"
             Header="Notify when a BeastStrap update is available"

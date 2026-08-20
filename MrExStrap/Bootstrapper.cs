@@ -863,10 +863,11 @@ namespace BeastStrap
 
             // v420.23: if the active profile is executor-tracked (came from the WEAO
             // dropdown), refresh its VersionGuid from WEAO before resolving. Bounded
-            // to 3s so a slow/dead WEAO never blocks launch — we just fall through to
-            // the cached value.
+            // to 6s so a slow/dead WEAO never blocks launch — we just fall through to
+            // the cached value. v420.50.1: the budget also covers a best-effort LIVE
+            // hash lookup that feeds the auto-downgrade protection.
             if (_launchMode == LaunchMode.Player && !cliVersion)
-                await ExecutorProfileRefresher.RefreshActiveAsync(TimeSpan.FromSeconds(3));
+                await ExecutorProfileRefresher.RefreshActiveAsync(TimeSpan.FromSeconds(6));
 
             // Resolve the Versions Manager profile for this launch (honors a per-account
             // -versionprofile override; otherwise the global active profile).
