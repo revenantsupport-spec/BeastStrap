@@ -4,17 +4,23 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 
 namespace BeastStrap.UI.Elements.Controls
 {
     /// <summary>
     /// User animated (GIF) wallpaper backdrop for hero surfaces (settings window, launch menu).
     /// The SourcePath DP is fed by ThemeManager via a DynamicResource so it re-evaluates live when
-    /// the user picks / clears a GIF. Frames are decoded up-front and cycled by a DispatcherTimer
-    /// that honours each frame's own delay (from the GIF's graphics-control block) and only runs
-    /// while the control is visible.
+    /// the user picks / clears a GIF.
+    ///
+    /// Animation is driven off <see cref="CompositionTarget.Rendering"/> — it fires once per render
+    /// frame, synchronised with the display's vsync (typically 60 Hz), which is far smoother than a
+    /// DispatcherTimer. Elapsed render time is accumulated against each frame's own delay, so the
+    /// GIF plays at its native speed but is only ever advanced at the display refresh rate (max one
+    /// source swap per render tick). All frames are frozen at load, which prevents the flicker /
+    /// artefacts you get from swapping live-decoded images every tick. The hook only runs while the
+    /// control is visible and is detached when it isn't, so it costs nothing in the background.
     /// </summary>
     public partial class GifBackground : UserControl
     {
@@ -33,8 +39,10 @@ namespace BeastStrap.UI.Elements.Controls
 
         private readonly List<BitmapFrame> _frames = new();
         private readonly List<int> _delaysMs = new();
-        private DispatcherTimer? _timer;
+        private bool _subscribedToRendering;
         private int _frameIndex;
+        private TimeSpan _lastRenderTime;
+        private double _accumulatorMs;
         private string _loadedPath = "";
 
         public GifBackground()
@@ -102,6 +110,7 @@ namespace BeastStrap.UI.Elements.Controls
             _frames.Clear();
             _delaysMs.Clear();
             _frameIndex = 0;
+            _accumulatorMs = 0;
             GifImage.Source = null;
             _loadedPath = path;
 
@@ -123,6 +132,18 @@ namespace BeastStrap.UI.Elements.Controls
                 {
                     _frames.Add(frame);
                     _delaysMs.Add(GetFrameDelayMs(frame));
+
+                    // Freeze every frame up-front so WPF can hand it to the render thread
+                    // directly each swap — live (unfrozen) images re-decode and flicker.
+                    try
+                    {
+                        if (!frame.IsFrozen)
+                            frame.Freeze();
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteException("GifBackground::FreezeFrame", ex);
+                    }
                 }
             }
             catch (Exception ex)
@@ -139,7 +160,7 @@ namespace BeastStrap.UI.Elements.Controls
 
             _frameIndex = 0;
             GifImage.Source = _frames[0];
-            StartTimer();
+            Start();
         }
 
         // GIF delay is stored in centiseconds (1/100 s) in the frame's graphics-control
@@ -176,44 +197,72 @@ namespace BeastStrap.UI.Elements.Controls
             return defaultDelayMs;
         }
 
-        private void StartTimer()
+        private void Start()
         {
             if (!IsVisible || _frames.Count == 0)
                 return;
 
-            Stop();
-            _timer = new DispatcherTimer(DispatcherPriority.Background);
-            _timer.Tick += OnTick;
-            _timer.Interval = TimeSpan.FromMilliseconds(Math.Max(10, _delaysMs[0]));
-            _timer.Start();
-        }
+            // Reset the timing state on every start/resume so a pause (window minimised /
+            // hidden) never produces a catch-up burst of frames.
+            _accumulatorMs = 0;
+            _lastRenderTime = default;
 
-        private void OnTick(object? sender, EventArgs e)
-        {
-            if (_frames.Count == 0)
+            if (_subscribedToRendering)
                 return;
 
-            _frameIndex = (_frameIndex + 1) % _frames.Count;
-            GifImage.Source = _frames[_frameIndex];
-
-            if (_timer is not null && _delaysMs.Count > 0)
-                _timer.Interval = TimeSpan.FromMilliseconds(Math.Max(10, _delaysMs[Math.Min(_frameIndex, _delaysMs.Count - 1)]));
+            CompositionTarget.Rendering += OnRendering;
+            _subscribedToRendering = true;
         }
 
         private void Stop()
         {
-            if (_timer is not null)
+            if (!_subscribedToRendering)
+                return;
+
+            CompositionTarget.Rendering -= OnRendering;
+            _subscribedToRendering = false;
+        }
+
+        private void OnRendering(object? sender, EventArgs e)
+        {
+            if (_frames.Count == 0)
+                return;
+
+            var renderingTime = ((RenderingEventArgs)e).RenderingTime;
+
+            if (_lastRenderTime == default)
             {
-                _timer.Stop();
-                _timer.Tick -= OnTick;
-                _timer = null;
+                _lastRenderTime = renderingTime;
+                return;
             }
+
+            double elapsedMs = (renderingTime - _lastRenderTime).TotalMilliseconds;
+            _lastRenderTime = renderingTime;
+
+            // Clamp so a long stall (UI thread was busy) doesn't fast-forward the animation.
+            elapsedMs = Math.Min(elapsedMs, 250);
+
+            _accumulatorMs += elapsedMs;
+
+            // Advance as many frames as the elapsed time covers, subtracting each frame's own
+            // delay, but commit the source swap at most once per render tick — the animation is
+            // bounded by the display's refresh rate.
+            bool advanced = false;
+            while (_accumulatorMs >= _delaysMs[_frameIndex])
+            {
+                _accumulatorMs -= _delaysMs[_frameIndex];
+                _frameIndex = (_frameIndex + 1) % _frames.Count;
+                advanced = true;
+            }
+
+            if (advanced)
+                GifImage.Source = _frames[_frameIndex];
         }
 
         private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (IsVisible)
-                StartTimer();
+                Start();
             else
                 Stop();
         }
