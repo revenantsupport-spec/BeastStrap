@@ -204,7 +204,14 @@ namespace BeastStrap.UI.ViewModels.Settings
         public double WallpaperOpacity
         {
             get => App.Settings.Prop.WallpaperOpacity;
-            set { App.Settings.Prop.WallpaperOpacity = value; ApplyTheme(); }
+            // Just push the live opacity resource (consumed via DynamicResource) instead of a
+            // full ThemeManager.Apply — a full rebuild re-decodes the image and re-applies the
+            // accent on every slider tick, which is what made the slider laggy.
+            set
+            {
+                App.Settings.Prop.WallpaperOpacity = value;
+                UpdateOpacityResource("WallpaperOpacity", value);
+            }
         }
 
         private void BrowseWallpaper()
@@ -241,8 +248,46 @@ namespace BeastStrap.UI.ViewModels.Settings
         public double GifWallpaperOpacity
         {
             get => App.Settings.Prop.GifWallpaperOpacity;
-            set { App.Settings.Prop.GifWallpaperOpacity = value; ApplyTheme(); }
+            set
+            {
+                App.Settings.Prop.GifWallpaperOpacity = value;
+                UpdateOpacityResource("GifBackgroundOpacity", value);
+            }
         }
+
+        public IEnumerable<BeastStrap.Enums.BackgroundFit> GifWallpaperStretches
+            => Enum.GetValues(typeof(BeastStrap.Enums.BackgroundFit)).Cast<BeastStrap.Enums.BackgroundFit>();
+
+        public BeastStrap.Enums.BackgroundFit GifWallpaperStretch
+        {
+            get => App.Settings.Prop.GifWallpaperStretch;
+            set { App.Settings.Prop.GifWallpaperStretch = value; ApplyTheme(); }
+        }
+
+        // Giphy / direct URL entry. Loaded into the same GifWallpaperLocation setting, so a
+        // remote GIF survives restarts exactly like a local file.
+        private string _gifWallpaperUrl = "";
+        public string GifWallpaperUrl
+        {
+            get => _gifWallpaperUrl;
+            set { _gifWallpaperUrl = value; OnPropertyChanged(nameof(GifWallpaperUrl)); }
+        }
+
+        public ICommand LoadGifWallpaperUrlCommand => new RelayCommand(LoadGifWallpaperUrl);
+
+        private void LoadGifWallpaperUrl()
+        {
+            string url = _gifWallpaperUrl?.Trim() ?? "";
+            if (string.IsNullOrEmpty(url))
+                return;
+            GifWallpaperLocation = url;
+            EnableGifWallpaper = true;
+        }
+
+        // Pushing a resource value is cheap and updates every DynamicResource consumer (the
+        // WallpaperBackground / GifBackground controls) instantly — no theme rebuild.
+        private static void UpdateOpacityResource(string key, double value)
+            => System.Windows.Application.Current.Resources[key] = Math.Clamp(value, 0.1, 1.0);
 
         private void BrowseGifWallpaper()
         {

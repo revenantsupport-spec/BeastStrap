@@ -47,6 +47,52 @@ namespace BeastStrap.UI.Elements.Controls
         private static void OnSourcePathChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
             => ((GifBackground)d).Reload(e.NewValue as string ?? "");
 
+        private static bool IsRemote(string path)
+            => path.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+               || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+        // Accepts a local file, a direct .gif URL, or a Giphy share page
+        // (https://giphy.com/gifs/...), which is resolved to its direct media .gif.
+        private static string ResolveSource(string source)
+        {
+            if (!IsRemote(source))
+                return source;
+
+            Uri uri;
+            try
+            {
+                uri = new Uri(source);
+            }
+            catch (UriFormatException)
+            {
+                return source;
+            }
+
+            // Direct media URL (media.giphy.com / media1..3.giphy.com, giphy.com/media/...):
+            // normalise to https + path and use it as-is.
+            if (uri.Host.Contains("giphy.com") && uri.AbsolutePath.Contains("/media/"))
+                return $"https://{uri.Host}{uri.AbsolutePath}";
+
+            // Giphy share page: the media id is the trailing hyphen-delimited token of the
+            // slug path, e.g. https://giphy.com/gifs/rick-astley-ico88wGV3d7RkaMhny.
+            if (uri.Host.Equals("giphy.com", StringComparison.OrdinalIgnoreCase)
+                && uri.AbsolutePath.StartsWith("/gifs/", StringComparison.OrdinalIgnoreCase))
+            {
+                string segment = uri.AbsolutePath.TrimEnd('/');
+                int lastSlash = segment.LastIndexOf('/');
+                string token = lastSlash >= 0 ? segment[(lastSlash + 1)..] : segment;
+                int dash = token.LastIndexOf('-');
+                if (dash >= 0)
+                    token = token[(dash + 1)..];
+
+                if (!string.IsNullOrWhiteSpace(token))
+                    return $"https://media.giphy.com/media/{token}/giphy.gif";
+            }
+
+            // Some other URL — try it directly.
+            return $"https://{uri.Host}{uri.AbsolutePath}";
+        }
+
         private void Reload(string path)
         {
             if (string.Equals(path, _loadedPath, StringComparison.OrdinalIgnoreCase))
@@ -59,13 +105,17 @@ namespace BeastStrap.UI.Elements.Controls
             GifImage.Source = null;
             _loadedPath = path;
 
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            // Local files must exist; remote URLs are fetched by the decoder.
+            if (!IsRemote(path) && !File.Exists(path))
                 return;
 
             try
             {
                 var decoder = new GifBitmapDecoder(
-                    new Uri(path),
+                    new Uri(ResolveSource(path)),
                     BitmapCreateOptions.PreservePixelFormat,
                     BitmapCacheOption.OnLoad);
 
