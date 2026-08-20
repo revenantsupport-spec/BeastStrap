@@ -156,9 +156,9 @@
             <Slider Width="200" Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
                     Value="{Binding GifWallpaperOpacity, Mode=TwoWay, Converter={StaticResource OpacityPercentConverter}}" />
         </controls:OptionControl>
-        <controls:OptionControl Header="GIF from URL" Description="Paste a Giphy link (giphy.com/gifs/...) or a direct .gif URL, then Load. Remote GIFs stay live across restarts.">
+        <controls:OptionControl Header="Wallpaper from URL" Description="Paste a Giphy link (giphy.com/gifs/...), a motionbgs.com page, or a direct .gif / .mp4 URL, then Load. Remote wallpapers stay live across restarts.">
             <StackPanel Orientation="Horizontal">
-                <ui:TextBox Width="240" PlaceholderText="https://giphy.com/gifs/..." Text="{Binding GifWallpaperUrl, UpdateSourceTrigger=PropertyChanged}" />
+                <ui:TextBox Width="240" PlaceholderText="https://motionbgs.com/... or https://giphy.com/gifs/..." Text="{Binding GifWallpaperUrl, UpdateSourceTrigger=PropertyChanged}" />
                 <ui:Button Margin="8,0,0,0" Icon="Link24" Content="Load" Command="{Binding LoadGifWallpaperUrlCommand}" />
             </StackPanel>
         </controls:OptionControl>

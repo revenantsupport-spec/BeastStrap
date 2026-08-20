@@ -255,8 +255,8 @@ namespace BeastStrap.UI.ViewModels.Settings
             }
         }
 
-        // Giphy / direct URL entry. Loaded into the same GifWallpaperLocation setting, so a
-        // remote GIF survives restarts exactly like a local file.
+        // Giphy / motionbgs / direct URL entry. Loaded into the same GifWallpaperLocation
+        // setting, so a remote GIF or video survives restarts exactly like a local file.
         private string _gifWallpaperUrl = "";
         public string GifWallpaperUrl
         {
@@ -282,7 +282,7 @@ namespace BeastStrap.UI.ViewModels.Settings
 
         private void BrowseGifWallpaper()
         {
-            var dialog = new OpenFileDialog { Filter = "Image and GIF files|*.gif;*.png;*.jpg;*.jpeg;*.bmp;*.webp" };
+            var dialog = new OpenFileDialog { Filter = "Animated wallpapers|*.gif;*.mp4;*.webm;*.mov;*.m4v;*.png;*.jpg;*.jpeg;*.bmp;*.webp" };
             if (dialog.ShowDialog() != true)
                 return;
             GifWallpaperLocation = dialog.FileName;
