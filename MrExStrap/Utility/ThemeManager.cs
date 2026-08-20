@@ -145,7 +145,7 @@ namespace BeastStrap.Utility
                 p.Surface, p.Hairline, p.Glow, p.GradientDirection, p.GlowIntensity,
                 s?.EnableAurora, s?.EnableGlass, s?.EnableGlow,
                 s?.EnableWallpaper, s?.WallpaperLocation, s?.WallpaperOpacity,
-                s?.EnableGifWallpaper, s?.GifWallpaperLocation, s?.GifWallpaperOpacity, s?.GifWallpaperStretch);
+                s?.EnableGifWallpaper, s?.GifWallpaperLocation, s?.GifWallpaperOpacity);
         }
 
         private static void ApplyWallpaper(ResourceDictionary res)
@@ -194,19 +194,12 @@ namespace BeastStrap.Utility
                 res["GifBackgroundPath"] = path;
                 res["GifBackgroundVisibility"] = Visibility.Visible;
                 res["GifBackgroundOpacity"] = Math.Clamp(s!.GifWallpaperOpacity, 0.1, 1.0);
-                res["GifBackgroundStretch"] = (s.GifWallpaperStretch) switch
-                {
-                    BackgroundFit.Fill => Stretch.UniformToFill,
-                    BackgroundFit.Stretch => Stretch.Fill,
-                    _ => Stretch.Uniform
-                };
                 return;
             }
 
             res["GifBackgroundPath"] = "";
             res["GifBackgroundVisibility"] = Visibility.Collapsed;
             res["GifBackgroundOpacity"] = 1.0;
-            res["GifBackgroundStretch"] = Stretch.Uniform;
         }
 
         private static bool IsRemote(string path)

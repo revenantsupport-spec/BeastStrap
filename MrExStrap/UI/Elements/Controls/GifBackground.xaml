@@ -19,7 +19,7 @@
     -->
     <Grid ClipToBounds="True">
         <Image x:Name="GifImage"
-               Stretch="{DynamicResource GifBackgroundStretch}"
+               Stretch="Fill"
                RenderOptions.BitmapScalingMode="HighQuality" />
         <Border Background="{DynamicResource BrandInkBrush}" Opacity="0.45" />
     </Grid>

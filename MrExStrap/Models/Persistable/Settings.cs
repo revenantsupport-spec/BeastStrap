@@ -47,9 +47,6 @@ namespace BeastStrap.Models.Persistable
         public string GifWallpaperLocation { get; set; } = "";
         // 0..1 how strongly the animation shows through behind the glass content.
         public double GifWallpaperOpacity { get; set; } = 0.4;
-        // How the GIF is sized in its surface: Fit (whole image, no crop), Fill (cover, may
-        // crop), Stretch (reshape to fill). Defaults to Fit so wallpapers aren't zoomed in.
-        public BackgroundFit GifWallpaperStretch { get; set; } = BackgroundFit.Fit;
 
         // integration configuration
         public bool EnableActivityTracking { get; set; } = true;

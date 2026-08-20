@@ -255,15 +255,6 @@ namespace BeastStrap.UI.ViewModels.Settings
             }
         }
 
-        public IEnumerable<BeastStrap.Enums.BackgroundFit> GifWallpaperStretches
-            => Enum.GetValues(typeof(BeastStrap.Enums.BackgroundFit)).Cast<BeastStrap.Enums.BackgroundFit>();
-
-        public BeastStrap.Enums.BackgroundFit GifWallpaperStretch
-        {
-            get => App.Settings.Prop.GifWallpaperStretch;
-            set { App.Settings.Prop.GifWallpaperStretch = value; ApplyTheme(); }
-        }
-
         // Giphy / direct URL entry. Loaded into the same GifWallpaperLocation setting, so a
         // remote GIF survives restarts exactly like a local file.
         private string _gifWallpaperUrl = "";
