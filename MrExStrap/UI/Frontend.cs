@@ -163,6 +163,7 @@ namespace BeastStrap.UI
                 BootstrapperStyle.ByfronDialog => new ByfronDialog(),
                 BootstrapperStyle.FluentDialog => new FluentDialog(false),
                 BootstrapperStyle.FluentAeroDialog => new FluentDialog(true),
+                BootstrapperStyle.TerminalDialog => new TerminalDialog(),
                 BootstrapperStyle.CustomDialog => GetCustomBootstrapper(),
                 _ => new FluentDialog(false)
             };

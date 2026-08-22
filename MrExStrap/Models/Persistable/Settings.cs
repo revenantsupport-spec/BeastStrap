@@ -230,5 +230,8 @@ namespace BeastStrap.Models.Persistable
         // bypass.tools link-bypasser API key — the user's own, local settings only (never shipped). Blank
         // means the Link Bypasser is off; users get a key by signing up via the referral link in the tab.
         public string BypassToolsApiKey { get; set; } = "";
+
+        // Simple mode — hides advanced TOOLS (Obfuscator/Deobfuscator/Link Bypasser) to keep nav clean.
+        public bool SimpleMode { get; set; } = false;
     }
 }

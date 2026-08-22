@@ -11,6 +11,8 @@ namespace BeastStrap.Enums
         [EnumName(StaticName = "BeastStrap")]
         FluentDialog,
         FluentAeroDialog,
+        [EnumName(StaticName = "Terminal")]
+        TerminalDialog,
         CustomDialog
     }
 }

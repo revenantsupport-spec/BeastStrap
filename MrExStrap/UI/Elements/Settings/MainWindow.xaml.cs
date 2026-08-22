@@ -44,6 +44,36 @@ namespace BeastStrap.UI.Elements.Settings
                 ShowAlreadyRunningSnackbar();
 
             LoadState();
+            SetupCollapsibleHeaders();
+
+            // QoL: restore last visited page (FrostStrap parity) + track recent
+            try
+            {
+                string last = App.State.Prop.LastVisitedPage;
+                if (!string.IsNullOrWhiteSpace(last) && last != "HomePage")
+                {
+                    var type = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(t => t.Name == last);
+                    if (type != null)
+                    {
+                        Dispatcher.BeginInvoke(() => { try { RootNavigation.Navigate(type); } catch { } }, System.Windows.Threading.DispatcherPriority.Loaded);
+                    }
+                }
+            }
+            catch { }
+
+            RootFrame.Navigated += (s, e) =>
+            {
+                try
+                {
+                    string name = e.Content?.GetType().Name ?? "";
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        App.State.Prop.LastVisitedPage = name;
+                        App.State.Save();
+                    }
+                }
+                catch { }
+            };
 
             _settingsBaseline = App.Settings.ComputeCurrentHash();
         }
@@ -129,6 +159,120 @@ namespace BeastStrap.UI.Elements.Settings
                 LaunchHandler.LaunchRoblox(LaunchMode.Player);
             else
                 App.SoftTerminate();
+        }
+
+        private void NavSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            string q = NavSearchBox.Text?.Trim().ToLowerInvariant() ?? "";
+            bool hasQuery = !string.IsNullOrWhiteSpace(q);
+
+            // When empty, restore collapsed state so headers that were collapsed stay collapsed
+            if (!hasQuery)
+            {
+                foreach (var obj in RootNavigation.Items)
+                {
+                    if (obj is System.Windows.UIElement el) el.Visibility = System.Windows.Visibility.Visible;
+                }
+                // Re-apply saved collapsed sections
+                foreach (var obj in RootNavigation.Items.OfType<Wpf.Ui.Controls.Navigation.NavigationHeader>())
+                {
+                    string key = obj.Text ?? "";
+                    if (App.State.Prop.CollapsedSidebarSections.Contains(key))
+                        SetSectionCollapsed(obj, true, false);
+                }
+                return;
+            }
+
+            // Searching expands everything first, then filters
+            foreach (var obj in RootNavigation.Items.OfType<Wpf.Ui.Controls.Navigation.NavigationHeader>())
+                obj.Visibility = System.Windows.Visibility.Visible;
+            foreach (var obj in RootNavigation.Items)
+            {
+                if (obj is System.Windows.UIElement el) el.Visibility = System.Windows.Visibility.Visible;
+            }
+
+            // Filter NavigationItems only — headers stay visible so structure isn't lost.
+            foreach (var obj in RootNavigation.Items)
+            {
+                if (obj is Wpf.Ui.Controls.NavigationItem nav)
+                {
+                    string title = nav.Content?.ToString()?.ToLowerInvariant() ?? "";
+                    string tag = nav.Tag?.ToString()?.ToLowerInvariant() ?? "";
+                    string page = nav.PageType?.Name.ToLowerInvariant() ?? "";
+
+                    bool match = title.Contains(q) || tag.Contains(q) || page.Contains(q);
+                    if (!match && title.Contains("engine") && (q.Contains("fps") || q.Contains("flag") || q.Contains("texture") || q.Contains("msaa"))) match = true;
+                    if (!match && title == "global" && (q.Contains("graphics") || q.Contains("framerate") || q.Contains("fps") || q.Contains("volume"))) match = true;
+                    if (!match && title == "appearance" && (q.Contains("bootstrapper") || q.Contains("terminal") || q.Contains("premium") || q.Contains("wallpaper") || q.Contains("gif"))) match = true;
+                    if (!match && title.Contains("appearance") && q.Contains("theme")) match = true;
+                    if (!match && title.Contains("versions") && q.Contains("downgrade")) match = true;
+
+                    nav.Visibility = match ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+                }
+            }
+        }
+
+        private void SetupCollapsibleHeaders()
+        {
+            try
+            {
+                foreach (var hdr in RootNavigation.Items.OfType<Wpf.Ui.Controls.Navigation.NavigationHeader>())
+                {
+                    string key = hdr.Text ?? "";
+                    // Restore collapsed state
+                    if (App.State.Prop.CollapsedSidebarSections.Contains(key))
+                        SetSectionCollapsed(hdr, true, false);
+
+                    // Make header look interactive
+                    hdr.Cursor = System.Windows.Input.Cursors.Hand;
+                    hdr.ToolTip = "Click to collapse/expand • " + key;
+                    // Attach click handler (use PreviewMouseLeftButtonUp to avoid nav selection)
+                    hdr.PreviewMouseLeftButtonUp += (s, e) =>
+                    {
+                        string k = hdr.Text ?? "";
+                        bool currentlyCollapsed = App.State.Prop.CollapsedSidebarSections.Contains(k);
+                        SetSectionCollapsed(hdr, !currentlyCollapsed, true);
+                        e.Handled = true;
+                    };
+                }
+            }
+            catch (Exception ex) { App.Logger.WriteException("MainWindow::SetupCollapsibleHeaders", ex); }
+        }
+
+        private void SetSectionCollapsed(Wpf.Ui.Controls.Navigation.NavigationHeader header, bool collapsed, bool save)
+        {
+            try
+            {
+                string key = header.Text ?? "";
+                var items = RootNavigation.Items.Cast<object>().ToList();
+                int idx = items.IndexOf(header);
+                if (idx < 0) return;
+
+                for (int i = idx + 1; i < items.Count; i++)
+                {
+                    var obj = items[i];
+                    if (obj is Wpf.Ui.Controls.Navigation.NavigationHeader) break;
+                    if (obj is System.Windows.UIElement el)
+                        el.Visibility = collapsed ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+                }
+
+                header.Opacity = collapsed ? 0.55 : 1.0;
+
+                if (save)
+                {
+                    if (collapsed)
+                    {
+                        if (!App.State.Prop.CollapsedSidebarSections.Contains(key))
+                            App.State.Prop.CollapsedSidebarSections.Add(key);
+                    }
+                    else
+                    {
+                        App.State.Prop.CollapsedSidebarSections.Remove(key);
+                    }
+                    App.State.Save();
+                }
+            }
+            catch (Exception ex) { App.Logger.WriteException("MainWindow::SetSectionCollapsed", ex); }
         }
     }
 }

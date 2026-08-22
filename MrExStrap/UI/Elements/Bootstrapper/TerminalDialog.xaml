@@ -1,0 +1,170 @@
+<base:WpfUiWindow
+    x:Class="BeastStrap.UI.Elements.Bootstrapper.TerminalDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:base="clr-namespace:BeastStrap.UI.Elements.Base"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="BeastStrap"
+    Width="640"
+    Height="520"
+    MinWidth="640"
+    MinHeight="520"
+    MaxWidth="640"
+    MaxHeight="620"
+    Background="#0C0C0C"
+    BorderBrush="#333333"
+    BorderThickness="1"
+    ExtendsContentIntoTitleBar="True"
+    ResizeMode="NoResize"
+    WindowBackdropType="Disable"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None"
+    Closing="UiWindow_Closing"
+    mc:Ignorable="d">
+
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo ProgressState="{Binding Path=TaskbarProgressState}" ProgressValue="{Binding Path=TaskbarProgressValue}" />
+    </Window.TaskbarItemInfo>
+
+    <Window.Resources>
+        <Style x:Key="TerminalProgressBar" TargetType="ProgressBar">
+            <Setter Property="Background" Value="#1A1A1A" />
+            <Setter Property="BorderBrush" Value="#333333" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="True">
+                            <Grid x:Name="PART_Track">
+                                <Border x:Name="PART_Indicator" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" />
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- scanline brush - subtle CRT -->
+        <DrawingBrush x:Key="ScanlineBrush" Viewport="0,0,1,4" ViewportUnits="Absolute" TileMode="Tile" Opacity="0.06">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="Transparent">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,1,2" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#000000">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,2,1,2" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </Window.Resources>
+
+    <Grid Background="#0C0C0C">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="28" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title bar — authentic Windows 10 CMD -->
+        <Border Grid.Row="0" Background="#000000" BorderBrush="#333333" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <!-- classic CMD icon: black square with C:\> prompt -->
+                    <Border Width="16" Height="14" Background="Black" BorderBrush="#CCCCCC" BorderThickness="1" VerticalAlignment="Center">
+                        <TextBlock Text="C:\" FontFamily="Consolas" FontSize="7" Foreground="#CCCCCC" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0" />
+                    </Border>
+                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#CCCCCC" FontFamily="Consolas" FontSize="12" Text="C:\Windows\System32\cmd.exe - BeastStrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,2,0">
+                    <Border Width="30" Height="22" Background="Transparent"><TextBlock Text="─" FontFamily="Segoe UI" FontSize="12" Foreground="#CCCCCC" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-3,0,0"/></Border>
+                    <Border Width="30" Height="22" Background="Transparent"><TextBlock Text="☐" FontFamily="Segoe UI" FontSize="10" Foreground="#CCCCCC" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/></Border>
+                    <Border Width="30" Height="22" Background="Transparent"><TextBlock Text="✕" FontFamily="Segoe UI" FontSize="11" Foreground="#CCCCCC" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Terminal body -->
+        <ScrollViewer x:Name="TerminalScroll" Grid.Row="1" Margin="0" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Background="#0C0C0C" Padding="10,8,10,6">
+            <StackPanel x:Name="TerminalPanel" />
+        </ScrollViewer>
+
+        <!-- Progress section -->
+        <Border x:Name="ProgressSection" Grid.Row="2" BorderBrush="#222222" BorderThickness="0,1,0,0" Background="#0C0C0C" Padding="10,6,10,10" Opacity="0">
+            <StackPanel>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="36" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Foreground="#888888" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Text="OVERALL" />
+                    <ProgressBar x:Name="PrimaryProgress" Grid.Column="1" Style="{StaticResource TerminalProgressBar}" Foreground="#CCCCCC" Maximum="100" Value="0" />
+                    <TextBlock x:Name="PrimaryPct" Grid.Column="2" Foreground="#666666" FontFamily="Consolas" FontSize="11" TextAlignment="Right" VerticalAlignment="Center" Text="0%" Margin="8,0,0,0" />
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="36" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Foreground="#888888" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Text="TRANSFER" />
+                    <ProgressBar x:Name="SecondaryProgress" Grid.Column="1" Style="{StaticResource TerminalProgressBar}" Foreground="#444444" Maximum="100" Value="0" />
+                    <TextBlock x:Name="SecondaryPct" Grid.Column="2" Foreground="#666666" FontFamily="Consolas" FontSize="11" TextAlignment="Right" VerticalAlignment="Center" Text="0%" Margin="8,0,0,0" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Bottom bar -->
+        <Border x:Name="BottomBar" Grid.Row="3" BorderBrush="#1E1E1E" BorderThickness="0,1,0,0" Background="#0C0C0C" Padding="10,6" Opacity="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Foreground="#444444" FontFamily="Consolas" FontSize="10" VerticalAlignment="Center" Text="Press CTRL+C to abort  |  BeastStrap will clean up on exit" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ReplayBtn" Content="[ REPLAY ]" Visibility="Collapsed" Margin="0,0,8,0" Padding="8,2" FontFamily="Consolas" FontSize="11" Foreground="#888888" Background="#0C0C0C" BorderBrush="#333333" BorderThickness="1" Cursor="Hand" Click="ReplayBtn_Click" />
+                    <Button x:Name="AbortBtn" Content="[ ABORT LAUNCH ]" Padding="8,2" FontFamily="Consolas" FontSize="11" Foreground="#FF4444" Background="#0C0C0C" BorderBrush="#3A0000" BorderThickness="1" Cursor="Hand" Click="AbortBtn_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#0C0C0C" />
+                                <Setter Property="BorderBrush" Value="#3A0000" />
+                                <Setter Property="Foreground" Value="#FF4444" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#1A0000" />
+                                        <Setter Property="BorderBrush" Value="#660000" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Scanline overlay — subtle CRT feel -->
+        <Border Grid.Row="1" Grid.RowSpan="3" IsHitTestVisible="False" Background="{StaticResource ScanlineBrush}" />
+    </Grid>
+</base:WpfUiWindow>

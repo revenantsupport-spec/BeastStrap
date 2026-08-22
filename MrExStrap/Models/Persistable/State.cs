@@ -85,5 +85,9 @@ namespace BeastStrap.Models.Persistable
         // App version the "we can't reach the update server" warning was last shown for, so it
         // fires once per installed version and re-arms after an upgrade rather than nagging.
         public string LastNotifiedDeadUpdaterVersion { get; set; } = "";
+
+        // QoL: remember last visited settings page + collapsed nav sections.
+        public string LastVisitedPage { get; set; } = "HomePage";
+        public List<string> CollapsedSidebarSections { get; set; } = new();
     }
 }

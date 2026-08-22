@@ -113,34 +113,80 @@ namespace BeastStrap.UI.ViewModels.Settings
         }
 
         // ===== Graphics and rendering =====
-
-        public string FramerateCap
+        // FishStrap parity: FramerateCap uses DFIntTaskSchedulerTargetFps semantics where
+        // -1 is the engine default (shown as 60 in the UI). GlobalBasicSettings stores the
+        // <int name="FramerateCap"> value; FishStrap maps <1 -> -1 on save and <1 -> 60 on load.
+        // See D:\FishStrap\Bloxstrap\UI\ViewModels\Settings\GlobalSettingsViewModel.cs:14-35
+        public int FramerateCap
         {
-            get => GBS.GetInt(GBS.FramerateCap, 240).ToString();
+            get
+            {
+                // FishStrap default is 60 when parsing fails; original BeastStrap used 240.
+                // Match FishStrap: if stored <1, show 60.
+                string? raw = GBS.GetValue(GBS.FramerateCap);
+                if (int.TryParse(raw, out int framerate))
+                {
+                    if (framerate < 1)
+                        return 60;
+                    return framerate;
+                }
+                return 60;
+            }
             set
             {
-                if (int.TryParse(value, out int fps))
-                    GBS.SetValue(GBS.FramerateCap, fps);
+                if (value < 1)
+                    value = -1;
 
+                GBS.SetValue(GBS.FramerateCap, value);
                 OnPropertyChanged(nameof(FramerateCap));
             }
         }
 
-        // Roblox stores 0 as "let the client decide", then 1-10 as manual steps.
+        // FishStrap parity: GraphicsQuality is a 1-10 slider bound to SavedQualityLevel token.
+        // See D:\FishStrap\Bloxstrap\UI\ViewModels\Settings\GlobalSettingsViewModel.cs:49-57
+        // and D:\FishStrap\Bloxstrap\UI\Elements\Settings\Pages\GlobalSettingsPage.xaml:27-38
+        // FishStrap stores the raw string token directly; we store the int value as token text.
+        public int GraphicsQuality
+        {
+            get
+            {
+                string? raw = GBS.GetValue(GBS.QualityLevel);
+                if (int.TryParse(raw, out int lvl) && lvl >= 1 && lvl <= 10)
+                    return lvl;
+
+                // FishStrap template defaults to 2; BeastStrap used 0=Automatic. If file has
+                // Automatic (0) or missing, show 2 to match FishStrap's fresh-install default.
+                // Slider is 1-10, so clamp out-of-range to 2.
+                return 2;
+            }
+            set
+            {
+                // Clamp to slider range; FishStrap tick is 1, min 1 max 10.
+                if (value < 1) value = 1;
+                if (value > 10) value = 10;
+
+                GBS.SetValue(GBS.QualityLevel, value);
+                OnPropertyChanged(nameof(GraphicsQuality));
+            }
+        }
+
+        // Kept for backwards compatibility if any XAML still references the old dropdown.
+        // Redirects to the slider property.
         public IEnumerable<string> QualityLevels { get; } =
             new[] { "Automatic" }.Concat(Enumerable.Range(1, 10).Select(i => i.ToString())).ToArray();
 
         public string SelectedQualityLevel
         {
-            get
-            {
-                int level = GBS.GetInt(GBS.QualityLevel, 0);
-                return level <= 0 ? "Automatic" : level.ToString();
-            }
+            get => GraphicsQuality.ToString();
             set
             {
-                GBS.SetValue(GBS.QualityLevel, value == "Automatic" ? 0 : int.TryParse(value, out int v) ? v : 0);
+                if (int.TryParse(value, out int v) && v >= 1 && v <= 10)
+                    GraphicsQuality = v;
+                else if (value == "Automatic")
+                    GBS.SetValue(GBS.QualityLevel, 0);
+
                 OnPropertyChanged(nameof(SelectedQualityLevel));
+                OnPropertyChanged(nameof(GraphicsQuality));
             }
         }
 
@@ -256,7 +302,7 @@ namespace BeastStrap.UI.ViewModels.Settings
                 nameof(HasBackup), nameof(StatusText), nameof(Locked),
                 nameof(UiTransparency), nameof(SelectedTextSize), nameof(ReducedMotion),
                 nameof(ChatVisible), nameof(PlayerNames), nameof(PlayerList), nameof(BadgeVisible),
-                nameof(PerformanceStats), nameof(FramerateCap), nameof(SelectedQualityLevel),
+                nameof(PerformanceStats), nameof(FramerateCap), nameof(GraphicsQuality), nameof(SelectedQualityLevel),
                 nameof(Fullscreen), nameof(StartMaximized), nameof(MasterVolume), nameof(MouseSensitivity)
             })
             {

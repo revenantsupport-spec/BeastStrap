@@ -8,6 +8,7 @@ namespace BeastStrap.Extensions
         {
             BootstrapperStyle.FluentDialog,
             BootstrapperStyle.FluentAeroDialog,
+            BootstrapperStyle.TerminalDialog,
             BootstrapperStyle.ClassicFluentDialog,
             BootstrapperStyle.ByfronDialog,
             BootstrapperStyle.ProgressDialog,

@@ -329,6 +329,7 @@ namespace BeastStrap.UI.Elements.Bootstrapper
 
             ApplyTransformations_UIElement(dialog, uiElement, xmlElement);
             ApplyEffects_UIElement(dialog, uiElement, xmlElement);
+            ApplyTriggers_UIElement(dialog, uiElement, xmlElement);
         }
 
         private static void HandleXmlElement_Control(CustomDialog dialog, Control uiElement, XElement xmlElement)
@@ -770,6 +771,240 @@ namespace BeastStrap.UI.Elements.Bootstrapper
             }
 
             return border;
+        }
+
+        private static Canvas HandleXmlElement_Canvas(CustomDialog dialog, XElement xmlElement)
+        {
+            var canvas = new Canvas();
+            HandleXmlElement_FrameworkElement(dialog, canvas, xmlElement);
+
+            ApplyBrush_UIElement(dialog, canvas, "Background", Canvas.BackgroundProperty, xmlElement);
+
+            foreach (var element in xmlElement.Elements().Where(x => !x.Name.ToString().StartsWith("Canvas.")))
+            {
+                var uiElement = HandleXml<UIElement>(dialog, element);
+                // Canvas attached properties
+                double left = ParseXmlAttribute<double>(element, "Canvas.Left", double.NaN);
+                if (!double.IsNaN(left)) Canvas.SetLeft(uiElement, left);
+                double top = ParseXmlAttribute<double>(element, "Canvas.Top", double.NaN);
+                if (!double.IsNaN(top)) Canvas.SetTop(uiElement, top);
+                double z = ParseXmlAttribute<double>(element, "Canvas.ZIndex", double.NaN);
+                if (!double.IsNaN(z)) Canvas.SetZIndex(uiElement, (int)z);
+                canvas.Children.Add(uiElement);
+            }
+
+            return canvas;
+        }
+
+        private static UIElement HandleXmlElement_MediaElement(CustomDialog dialog, XElement xmlElement)
+        {
+            var media = new MediaElement();
+            HandleXmlElement_FrameworkElement(dialog, media, xmlElement);
+
+            string? source = xmlElement.Attribute("Source")?.Value;
+            if (!string.IsNullOrEmpty(source))
+            {
+                string? fullPath = GetFullPath(dialog, source);
+                try
+                {
+                    media.Source = new Uri(fullPath ?? source, UriKind.RelativeOrAbsolute);
+                }
+                catch (Exception ex)
+                {
+                    throw new CustomThemeException(ex, "CustomTheme.Errors.ElementTypeCreationFailed", "MediaElement", "Uri", ex.Message);
+                }
+            }
+
+            media.LoadedBehavior = ParseXmlAttribute<MediaState>(xmlElement, "LoadedBehavior", MediaState.Play);
+            media.UnloadedBehavior = ParseXmlAttribute<MediaState>(xmlElement, "UnloadedBehavior", MediaState.Stop);
+            media.Stretch = ParseXmlAttribute<Stretch>(xmlElement, "Stretch", Stretch.Fill);
+            media.Volume = ParseXmlAttribute<double>(xmlElement, "Volume", 0.5);
+            media.IsMuted = ParseXmlAttribute<bool>(xmlElement, "IsMuted", false);
+
+            // loop support
+            bool loop = ParseXmlAttribute<bool>(xmlElement, "Loop", false);
+            if (loop)
+                media.MediaEnded += (s, e) => { media.Position = TimeSpan.Zero; media.Play(); };
+
+            return media;
+        }
+
+        private static UIElement HandleXmlElement_WebView(CustomDialog dialog, XElement xmlElement)
+        {
+            var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+            HandleXmlElement_FrameworkElement(dialog, webView, xmlElement);
+
+            string? source = xmlElement.Attribute("Source")?.Value;
+            string? html = xmlElement.Attribute("Html")?.Value;
+
+            // Inline HTML content as element text or Html attribute
+            if (string.IsNullOrEmpty(html))
+            {
+                // Check for <WebView.Html> child or direct text content
+                var htmlElement = xmlElement.Element("WebView.Html") ?? xmlElement.Element($"{xmlElement.Name}.Html");
+                if (htmlElement != null)
+                    html = htmlElement.Value;
+                else if (!xmlElement.IsEmpty && xmlElement.Nodes().OfType<XText>().Any())
+                    html = string.Concat(xmlElement.Nodes().OfType<XText>().Select(t => t.Value)).Trim();
+            }
+
+            // Also support theme:// file reference for Source
+            if (!string.IsNullOrEmpty(source) && string.IsNullOrEmpty(html))
+            {
+                string? fullPath = GetFullPath(dialog, source);
+                webView.Loaded += async (s, e) =>
+                {
+                    try
+                    {
+                        await webView.EnsureCoreWebView2Async();
+                        webView.CoreWebView2.WebMessageReceived += (ss, ee) =>
+                        {
+                            try
+                            {
+                                var msg = ee.TryGetWebMessageAsString();
+                                if (msg == "abort")
+                                    dialog.Dispatcher.Invoke(() => dialog.Bootstrapper?.Cancel());
+                            }
+                            catch { }
+                        };
+                        if (fullPath != null && File.Exists(fullPath))
+                            webView.CoreWebView2.Navigate($"file:///{fullPath.Replace("\\", "/")}");
+                        else
+                            webView.Source = new Uri(source, UriKind.RelativeOrAbsolute);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebView navigate failed: {ex}");
+                    }
+                };
+            }
+            else if (!string.IsNullOrEmpty(html))
+            {
+                string htmlContent = html;
+                webView.Loaded += async (s, e) =>
+                {
+                    try
+                    {
+                        await webView.EnsureCoreWebView2Async();
+                        webView.CoreWebView2.WebMessageReceived += (ss, ee) =>
+                        {
+                            try
+                            {
+                                var msg = ee.TryGetWebMessageAsString();
+                                if (msg == "abort")
+                                    dialog.Dispatcher.Invoke(() => dialog.Bootstrapper?.Cancel());
+                            }
+                            catch { }
+                        };
+                        webView.NavigateToString(htmlContent);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebView NavigateToString failed: {ex}");
+                    }
+                };
+            }
+            else
+            {
+                // empty WebView — user will set Source via file path later
+                webView.Loaded += async (s, e) =>
+                {
+                    try
+                    {
+                        await webView.EnsureCoreWebView2Async();
+                        webView.CoreWebView2.WebMessageReceived += (ss, ee) =>
+                        {
+                            try
+                            {
+                                var msg = ee.TryGetWebMessageAsString();
+                                if (msg == "abort")
+                                    dialog.Dispatcher.Invoke(() => dialog.Bootstrapper?.Cancel());
+                            }
+                            catch { }
+                        };
+                    }
+                    catch { }
+                };
+            }
+
+            return webView;
+        }
+
+        // Apply Storyboard triggers defined as <FrameworkElement.Triggers> children.
+        private static void ApplyTriggers_UIElement(CustomDialog dialog, FrameworkElement element, XElement xmlElement)
+        {
+            var triggersElement = xmlElement.Element($"{xmlElement.Name}.Triggers") ?? xmlElement.Element("FrameworkElement.Triggers");
+            if (triggersElement == null) return;
+
+            foreach (var triggerNode in triggersElement.Elements())
+            {
+                if (triggerNode.Name != "EventTrigger") continue;
+                string? routedEvent = triggerNode.Attribute("RoutedEvent")?.Value;
+                if (string.IsNullOrEmpty(routedEvent)) continue;
+
+                RoutedEvent? re = null;
+                if (routedEvent == "Loaded") re = FrameworkElement.LoadedEvent;
+                else if (routedEvent == "MouseEnter") re = UIElement.MouseEnterEvent;
+                else if (routedEvent == "MouseLeave") re = UIElement.MouseLeaveEvent;
+                else continue;
+
+                var eventTrigger = new EventTrigger { RoutedEvent = re };
+
+                foreach (var actionNode in triggerNode.Elements())
+                {
+                    if (actionNode.Name != "BeginStoryboard") continue;
+                    var storyboard = new Storyboard();
+
+                    foreach (var sbChild in actionNode.Elements())
+                    {
+                        if (sbChild.Name == "Storyboard")
+                        {
+                            foreach (var animNode in sbChild.Elements())
+                            {
+                                Timeline? anim = null;
+                                if (animNode.Name == "DoubleAnimation")
+                                {
+                                    var da = new DoubleAnimation
+                                    {
+                                        From = ParseXmlAttributeNullable<double>(animNode, "From"),
+                                        To = ParseXmlAttributeNullable<double>(animNode, "To"),
+                                        By = ParseXmlAttributeNullable<double>(animNode, "By"),
+                                        Duration = new Duration(TimeSpan.FromSeconds(ParseXmlAttribute<double>(animNode, "Duration", 1))),
+                                        AutoReverse = ParseXmlAttribute<bool>(animNode, "AutoReverse", false),
+                                        RepeatBehavior = (animNode.Attribute("RepeatBehavior")?.Value == "Forever") ? RepeatBehavior.Forever : new RepeatBehavior(1)
+                                    };
+                                    string? targetName = animNode.Attribute("Storyboard.TargetName")?.Value;
+                                    string? targetProp = animNode.Attribute("Storyboard.TargetProperty")?.Value;
+                                    if (!string.IsNullOrEmpty(targetName)) Storyboard.SetTargetName(da, targetName);
+                                    if (!string.IsNullOrEmpty(targetProp)) Storyboard.SetTargetProperty(da, new PropertyPath(targetProp));
+                                    anim = da;
+                                }
+                                else if (animNode.Name == "ColorAnimation")
+                                {
+                                    var ca = new ColorAnimation
+                                    {
+                                        From = GetColorFromXElement(animNode, "From") as Color?,
+                                        To = GetColorFromXElement(animNode, "To") as Color?,
+                                        Duration = new Duration(TimeSpan.FromSeconds(ParseXmlAttribute<double>(animNode, "Duration", 1))),
+                                        AutoReverse = ParseXmlAttribute<bool>(animNode, "AutoReverse", false)
+                                    };
+                                    string? targetName = animNode.Attribute("Storyboard.TargetName")?.Value;
+                                    string? targetProp = animNode.Attribute("Storyboard.TargetProperty")?.Value;
+                                    if (!string.IsNullOrEmpty(targetName)) Storyboard.SetTargetName(ca, targetName);
+                                    if (!string.IsNullOrEmpty(targetProp)) Storyboard.SetTargetProperty(ca, new PropertyPath(targetProp));
+                                    anim = ca;
+                                }
+                                if (anim != null) storyboard.Children.Add(anim);
+                            }
+                        }
+                    }
+
+                    var begin = new BeginStoryboard { Storyboard = storyboard };
+                    eventTrigger.Actions.Add(begin);
+                }
+
+                element.Triggers.Add(eventTrigger);
+            }
         }
         #endregion
     }

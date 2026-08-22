@@ -71,12 +71,21 @@
         <!-- ===== Graphics ===== -->
         <TextBlock Text="Graphics and rendering" FontSize="20" FontWeight="Medium" Margin="0,22,0,4" />
 
-        <controls:OptionControl Header="Framerate cap" Description="Roblox's own FPS limit. This is separate from the FPS unlocker on the Engine Settings page.">
-            <ui:TextBox Width="120" Text="{Binding FramerateCap, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+        <controls:OptionControl Header="Framerate cap" Description="Roblox's own FPS limit (FramerateCap). Set to 0 for default if you use Roblox's native unlocker. Separate from the FPS unlocker on Engine Settings.">
+            <ui:TextBox Width="120" Text="{Binding FramerateCap, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PreviewTextInput="ValidateUInt32" />
         </controls:OptionControl>
 
-        <controls:OptionControl Header="Graphics quality" Description="Automatic lets Roblox pick. 1 is lowest, 10 is highest.">
-            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding QualityLevels, Mode=OneTime}" SelectedItem="{Binding SelectedQualityLevel, Mode=TwoWay}" />
+        <controls:OptionControl Header="Graphics quality" Description="Roblox in-game graphics quality — 1 is lowest, 10 is highest. Mirrors FishStrap's slider.">
+            <Grid Width="256">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Slider Grid.Column="0" Margin="0,0,8,0" Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" Value="{Binding GraphicsQuality, Mode=TwoWay}" />
+                <Border Grid.Column="1" Width="30" Margin="0,-4,0,0" BorderBrush="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}" Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}" BorderThickness="1" CornerRadius="4">
+                    <TextBlock HorizontalAlignment="Center" Padding="4" VerticalAlignment="Center" TextAlignment="Center" Text="{Binding GraphicsQuality, Mode=TwoWay}" />
+                </Border>
+            </Grid>
         </controls:OptionControl>
 
         <controls:OptionControl Header="Fullscreen" Description="Start the client in fullscreen.">

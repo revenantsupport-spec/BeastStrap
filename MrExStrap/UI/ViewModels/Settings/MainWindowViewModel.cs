@@ -38,6 +38,20 @@ namespace BeastStrap.UI.ViewModels.Settings
             }
         }
 
+        public bool SimpleMode
+        {
+            get => App.Settings.Prop.SimpleMode;
+            set
+            {
+                App.Settings.Prop.SimpleMode = value;
+                App.Settings.Save();
+                OnPropertyChanged(nameof(SimpleMode));
+                OnPropertyChanged(nameof(IsAdvancedMode));
+            }
+        }
+
+        public bool IsAdvancedMode => !SimpleMode;
+
         private void OpenAbout() => new MainWindow().ShowDialog();
 
         private void CloseWindow() => RequestCloseWindowEvent?.Invoke(this, EventArgs.Empty);
