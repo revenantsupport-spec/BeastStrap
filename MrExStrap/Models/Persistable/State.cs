@@ -89,5 +89,9 @@ namespace BeastStrap.Models.Persistable
         // QoL: remember last visited settings page + collapsed nav sections.
         public string LastVisitedPage { get; set; } = "HomePage";
         public List<string> CollapsedSidebarSections { get; set; } = new();
+
+        // Tags of sidebar tabs the user pinned to the top. Stored as a list of Tag values
+        // matching the NavigationItem.Tag entries (e.g. "mods", "fastflags", "appearance").
+        public List<string> PinnedSidebarTabs { get; set; } = new();
     }
 }

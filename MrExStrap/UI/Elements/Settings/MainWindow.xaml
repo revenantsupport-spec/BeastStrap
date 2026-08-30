@@ -81,6 +81,8 @@
                     <ui:NavigationItem Content="Home" PageType="{x:Type pages:HomePage}" Icon="Home24" Tag="home" />
                     <ui:NavigationItem Content="News" PageType="{x:Type pages:NewsPage}" Icon="News20" Tag="news" />
 
+                    <ui:NavigationHeader x:Name="PinnedHeader" Text="PINNED" />
+
                     <ui:NavigationHeader Text="LAUNCH" />
                     <ui:NavigationItem Content="{x:Static resources:Strings.Menu_Behaviour_Title}" PageType="{x:Type pages:BehaviourPage}" Icon="PlaySettings20" Tag="bootstrapper" />
                     <ui:NavigationItem Content="{x:Static resources:Strings.Menu_Integrations_Title}" PageType="{x:Type pages:IntegrationsPage}" Icon="Add28" Tag="integrations" />

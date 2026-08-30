@@ -1,8 +1,12 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
+using Wpf.Ui.Controls;
 using Wpf.Ui.Controls.Interfaces;
+using Wpf.Ui.Controls.Navigation;
+using Wpf.Ui.Common;
 using Wpf.Ui.Mvvm.Contracts;
 
 using BeastStrap.UI.ViewModels.Settings;
@@ -45,6 +49,8 @@ namespace BeastStrap.UI.Elements.Settings
 
             LoadState();
             SetupCollapsibleHeaders();
+            BuildPinnedSection();
+            AttachPinContextMenus();
 
             // QoL: restore last visited page (FrostStrap parity) + track recent
             try
@@ -210,6 +216,10 @@ namespace BeastStrap.UI.Elements.Settings
                     nav.Visibility = match ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
                 }
             }
+
+            // Keep the Pinned header hidden during search if nothing is pinned
+            if (App.State.Prop.PinnedSidebarTabs.Count == 0)
+                PinnedHeader.Visibility = System.Windows.Visibility.Collapsed;
         }
 
         private void SetupCollapsibleHeaders()
@@ -274,5 +284,192 @@ namespace BeastStrap.UI.Elements.Settings
             }
             catch (Exception ex) { App.Logger.WriteException("MainWindow::SetSectionCollapsed", ex); }
         }
+
+        #region Pin Sidebar Tabs
+
+        // Maps each pinnable tab tag to the section header it belongs to.
+        // Used to restore unpinned tabs to the end of their original section.
+        private static readonly Dictionary<string, string> TagToSection = new()
+        {
+            { "bootstrapper", "LAUNCH" },
+            { "integrations", "LAUNCH" },
+            { "shortcuts", "LAUNCH" },
+            { "versionsmanager", "VERSIONS" },
+            { "downgrading", "VERSIONS" },
+            { "vipservers", "VERSIONS" },
+            { "serverbrowser", "VERSIONS" },
+            { "multiinstance", "ACCOUNTS" },
+            { "accountsmanager", "ACCOUNTS" },
+            { "altgen", "ACCOUNTS" },
+            { "banasync", "ACCOUNTS" },
+            { "mods", "CUSTOMIZATION" },
+            { "fastflags", "CUSTOMIZATION" },
+            { "global", "CUSTOMIZATION" },
+            { "appearance", "CUSTOMIZATION" },
+            { "obfuscator", "TOOLS" },
+            { "deobfuscator", "TOOLS" },
+            { "linkbypasser", "TOOLS" }
+        };
+
+        // On startup: move pinned tabs from their sections to under PINNED.
+        private void BuildPinnedSection()
+        {
+            try
+            {
+                PinnedHeader.Visibility = App.State.Prop.PinnedSidebarTabs.Count > 0
+                    ? Visibility.Visible : Visibility.Collapsed;
+
+                foreach (string tag in App.State.Prop.PinnedSidebarTabs.ToList())
+                {
+                    PinTabInternal(tag);
+                }
+            }
+            catch (Exception ex) { App.Logger.WriteException("MainWindow::BuildPinnedSection", ex); }
+        }
+
+        // Moves an existing NavigationItem from its current position to under PINNED.
+        private void PinTabInternal(string tag)
+        {
+            NavigationItem? item = FindNavItemByTag(tag);
+            if (item == null) return;
+
+            int currentIdx = RootNavigation.Items.IndexOf(item);
+            int pinnedIdx = RootNavigation.Items.IndexOf(PinnedHeader);
+            if (currentIdx < 0 || pinnedIdx < 0) return;
+
+            // Remove from current position
+            RootNavigation.Items.RemoveAt(currentIdx);
+
+            // Recalculate PINNED index after removal (it may have shifted)
+            pinnedIdx = RootNavigation.Items.IndexOf(PinnedHeader);
+
+            // Insert right after PINNED header
+            RootNavigation.Items.Insert(pinnedIdx + 1, item);
+        }
+
+        // Finds a NavigationItem by its Tag.
+        private NavigationItem? FindNavItemByTag(string tag)
+        {
+            foreach (var obj in RootNavigation.Items)
+            {
+                if (obj is NavigationItem nav && nav.Tag is string t && t == tag)
+                    return nav;
+            }
+            return null;
+        }
+
+        private void AttachPinContextMenus()
+        {
+            try
+            {
+                foreach (var obj in RootNavigation.Items)
+                {
+                    if (obj is NavigationItem nav && nav.Tag is string tag
+                        && tag != "home" && tag != "news")
+                    {
+                        var contextMenu = new System.Windows.Controls.ContextMenu();
+                        var menuItem = new System.Windows.Controls.MenuItem();
+
+                        if (IsPinned(tag))
+                        {
+                            menuItem.Header = "Unpin from top";
+                            menuItem.Click += (s, e) => UnpinTab(tag);
+                        }
+                        else
+                        {
+                            menuItem.Header = "Pin to top";
+                            menuItem.Click += (s, e) => PinTab(tag);
+                        }
+
+                        contextMenu.Items.Add(menuItem);
+                        nav.ContextMenu = contextMenu;
+                    }
+                }
+            }
+            catch (Exception ex) { App.Logger.WriteException("MainWindow::AttachPinContextMenus", ex); }
+        }
+
+        private bool IsPinned(string tag) => App.State.Prop.PinnedSidebarTabs.Contains(tag);
+
+        private void PinTab(string tag)
+        {
+            try
+            {
+                if (App.State.Prop.PinnedSidebarTabs.Contains(tag)) return;
+                App.State.Prop.PinnedSidebarTabs.Add(tag);
+
+                PinTabInternal(tag);
+
+                PinnedHeader.Visibility = Visibility.Visible;
+                AttachPinContextMenus();
+                App.State.Save();
+            }
+            catch (Exception ex) { App.Logger.WriteException("MainWindow::PinTab", ex); }
+        }
+
+        private void UnpinTab(string tag)
+        {
+            try
+            {
+                App.State.Prop.PinnedSidebarTabs.Remove(tag);
+
+                NavigationItem? item = FindNavItemByTag(tag);
+                if (item == null) return;
+
+                // Remove from PINNED
+                RootNavigation.Items.Remove(item);
+
+                // Restore to end of original section
+                RestoreToSection(tag, item);
+
+                PinnedHeader.Visibility = App.State.Prop.PinnedSidebarTabs.Count > 0
+                    ? Visibility.Visible : Visibility.Collapsed;
+                AttachPinContextMenus();
+                App.State.Save();
+            }
+            catch (Exception ex) { App.Logger.WriteException("MainWindow::UnpinTab", ex); }
+        }
+
+        // Inserts the item at the end of its original section (right before the next section header).
+        private void RestoreToSection(string tag, NavigationItem item)
+        {
+            if (!TagToSection.TryGetValue(tag, out string? sectionName))
+            {
+                RootNavigation.Items.Add(item);
+                return;
+            }
+
+            // Find the section header
+            int sectionIdx = -1;
+            for (int i = 0; i < RootNavigation.Items.Count; i++)
+            {
+                if (RootNavigation.Items[i] is NavigationHeader hdr && hdr.Text == sectionName)
+                {
+                    sectionIdx = i;
+                    break;
+                }
+            }
+
+            if (sectionIdx < 0)
+            {
+                RootNavigation.Items.Add(item);
+                return;
+            }
+
+            // Find the next section header after this one — insert before it
+            int insertIdx = RootNavigation.Items.Count;
+            for (int i = sectionIdx + 1; i < RootNavigation.Items.Count; i++)
+            {
+                if (RootNavigation.Items[i] is NavigationHeader)
+                {
+                    insertIdx = i;
+                    break;
+                }
+            }
+
+            RootNavigation.Items.Insert(insertIdx, item);
+        }
+
+        #endregion
     }
 }
