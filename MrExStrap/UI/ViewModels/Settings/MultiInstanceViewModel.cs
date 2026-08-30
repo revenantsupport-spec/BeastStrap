@@ -206,6 +206,36 @@ namespace BeastStrap.UI.ViewModels.Settings
             set { App.Settings.Prop.MultiInstanceEnabled = value; OnPropertyChanged(nameof(MultiInstanceEnabled)); }
         }
 
+        // ---- Multi-instance RAM reducer ----
+
+        public bool RamReducerEnabled
+        {
+            get => App.Settings.Prop.MultiInstanceRamReducerEnabled;
+            set { App.Settings.Prop.MultiInstanceRamReducerEnabled = value; OnPropertyChanged(nameof(RamReducerEnabled)); }
+        }
+
+        public bool RamReducerLowTextures
+        {
+            get => App.Settings.Prop.MultiInstanceRamReducerLowTextures;
+            set { App.Settings.Prop.MultiInstanceRamReducerLowTextures = value; OnPropertyChanged(nameof(RamReducerLowTextures)); }
+        }
+
+        public bool RamReducerTrimWorkingSet
+        {
+            get => App.Settings.Prop.MultiInstanceRamReducerTrimWorkingSet;
+            set { App.Settings.Prop.MultiInstanceRamReducerTrimWorkingSet = value; OnPropertyChanged(nameof(RamReducerTrimWorkingSet)); }
+        }
+
+        public int RamReducerTargetFps
+        {
+            get => App.Settings.Prop.MultiInstanceRamReducerTargetFps;
+            set
+            {
+                App.Settings.Prop.MultiInstanceRamReducerTargetFps = Math.Clamp(value, 15, 120);
+                OnPropertyChanged(nameof(RamReducerTargetFps));
+            }
+        }
+
         // When on, launches open to the Roblox home screen and the Place/Job fields are ignored.
         public bool LaunchToHome
         {

@@ -169,6 +169,46 @@
             <ui:ToggleSwitch IsChecked="{Binding MultiInstanceEnabled, Mode=TwoWay}" />
         </controls:OptionControl>
 
+        <!-- RAM reducer -->
+        <ui:CardExpander Margin="0,8,0,0" IsExpanded="False">
+            <ui:CardExpander.Header>
+                <StackPanel>
+                    <TextBlock FontSize="14" Text="RAM reducer" />
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"
+                               Text="Cut memory per farm slot. Every Roblox client is a full process, so each account eats its own ~1GB+ working set. This drops the FPS cap, clamps textures and trims the non-focused clients' working sets on multi-instance launches only — your normal single launches are untouched." />
+                </StackPanel>
+            </ui:CardExpander.Header>
+            <StackPanel>
+                <controls:OptionControl Margin="0,8,0,0"
+                    Header="Enable RAM reducer"
+                    Description="Layers lean FastFlags (FPS cap, lowest textures, no grass) over your profile's flags for multi-instance launches, and trims background clients while they run. Turns off cleanly — the next launch re-applies your profile's normal flags. It replaces the same-named flags for these launches; visible quality drops in every slot is the point.">
+                    <ui:ToggleSwitch IsChecked="{Binding RamReducerEnabled, Mode=TwoWay}" />
+                </controls:OptionControl>
+
+                <controls:OptionControl Margin="0,12,0,0"
+                    Header="Framerate cap"
+                    Description="Render work is the other half of the memory bill. A background farm account doesn't need 60fps — 30 recovers most of the gain.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox Width="80" Padding="8,5" Text="{Binding RamReducerTargetFps, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text=" FPS" VerticalAlignment="Center" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </controls:OptionControl>
+
+                <controls:OptionControl Margin="0,12,0,0"
+                    Header="Clamp textures"
+                    Description="Forces the lowest texture quality level. Textures are the single biggest RAM consumer — this is the biggest single-instance saving.">
+                    <ui:ToggleSwitch IsChecked="{Binding RamReducerLowTextures, Mode=TwoWay}" />
+                </controls:OptionControl>
+
+                <controls:OptionControl Margin="0,12,0,0"
+                    Header="Trim background working sets"
+                    Description="Every few seconds, marks non-focused Roblox clients as LOW memory priority and hands their physical pages back to Windows (EmptyWorkingSet). The focused client is never touched, so the one you're playing stays smooth. This is why the Running Instances list drops MB after switching between farm slots.">
+                    <ui:ToggleSwitch IsChecked="{Binding RamReducerTrimWorkingSet, Mode=TwoWay}" />
+                </controls:OptionControl>
+            </StackPanel>
+        </ui:CardExpander>
+
         <!-- Running Roblox instances panel -->
         <ui:CardExpander Margin="0,8,0,0" IsExpanded="False">
             <ui:CardExpander.Header>

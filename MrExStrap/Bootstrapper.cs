@@ -651,6 +651,11 @@ namespace BeastStrap
                 // gets its own flags, not the global active profile's.
                 Utility.FastFlagProfiles.MaterializeActiveToCanonical(activeProfileForCheck);
 
+                // Multi-instance RAM reducer: layer the lean flag set over whatever the active
+                // profile materialised, so farm launches run on capped FPS / low textures. No-op
+                // for normal single launches and for reducer-off.
+                Utility.MultiInstanceRamReducer.LayerOverCanonicalIfActive();
+
                 // we require deployment details for applying modifications for a worst case scenario,
                 // where we'd need to restore files from a package that isn't present on disk and needs to be redownloaded
                 allModificationsApplied = await ApplyModifications();

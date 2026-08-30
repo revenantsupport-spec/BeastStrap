@@ -265,6 +265,11 @@ namespace BeastStrap
                 if (closeCrashHandler)
                     CloseRobloxCrashHandlers();
 
+                // Multi-instance RAM reducer: every few seconds trim the working sets of the farm
+                // clients that aren't the watched one or the focused window. Idempotent, cheap,
+                // and skipped entirely when the reducer (or its working-set trim) is disabled.
+                Utility.MultiInstanceRamReducer.TrimOnceEvery(5, _watcherData.ProcessId);
+
                 await Task.Delay(1000);
             }
 

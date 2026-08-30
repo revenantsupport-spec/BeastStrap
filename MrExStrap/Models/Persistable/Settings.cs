@@ -166,6 +166,23 @@ namespace BeastStrap.Models.Persistable
         // holds. Default off. (With this on we can't use the crash handler to detect crashes.)
         public bool CloseRobloxCrashHandler { get; set; } = false;
 
+        // Multi-instance RAM reducer (BeastStrap fork feature, see Utility.MultiInstanceRamReducer).
+        // When ON, multi-instance launches layer lean FastFlags (FPS cap / low textures / no grass)
+        // over the active profile's client settings, and the watcher trims non-focused clients'
+        // working sets. Default off — it visibly cuts quality in every farm slot, which is the deal.
+        public bool MultiInstanceRamReducerEnabled { get; set; } = false;
+
+        // Framerate cap applied to farm clients. Render work is the other half of the RAM bill —
+        // a background account doesn't need 60fps. Default 30.
+        public int MultiInstanceRamReducerTargetFps { get; set; } = 30;
+
+        // Clamp textures to the lowest level. Textures are the single biggest RAM consumer.
+        public bool MultiInstanceRamReducerLowTextures { get; set; } = true;
+
+        // Trim non-focused clients' working sets periodically (EmptyWorkingSet + LOW memory
+        // priority). Reclaims physical RAM Windows would otherwise keep resident per instance.
+        public bool MultiInstanceRamReducerTrimWorkingSet { get; set; } = true;
+
         // AltGen tab: the user's OWN BloxGen API key (https://bloxgen.net). Stored locally only —
         // we never ship a key. Each user supplies their own (signs up via the affiliate link on
         // the tab). Empty until entered.
