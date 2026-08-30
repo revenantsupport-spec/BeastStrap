@@ -176,6 +176,22 @@ if ($DryRun) {
 git -C $RepoRoot add "MrExStrap/BeastStrap.csproj"
 if ($LASTEXITCODE -ne 0) { throw "git add failed" }
 
+# Safety check: untracked files won't be included in the release commit but
+# WOULD be built into the local exe. That mismatch means CI (which builds from
+# the tag commit) would produce a different binary and clobber ours with
+# --clobber. Refuse rather than ship a ghost.
+$untracked = git -C $RepoRoot status --porcelain --untracked-files=normal | Where-Object { $_ -match '^\?\?' }
+if ($untracked) {
+    throw "Untracked files in the working directory won't be in the release commit. `nAdd or stash them before running the updater."
+}
+
+# Stage ALL tracked changes so the release commit matches what was built locally.
+# Before this fix, only the csproj was staged — any other modified files were built
+# into the local exe but absent from the tagged commit, so CI's build (from the tag)
+# was stale and its --clobber upload replaced the correct exe with an old one.
+git -C $RepoRoot add -u
+if ($LASTEXITCODE -ne 0) { throw "git add -u failed" }
+
 $pending = git -C $RepoRoot status --porcelain --untracked-files=no
 if ($pending) {
     git -C $RepoRoot commit -m "Release $Version"
