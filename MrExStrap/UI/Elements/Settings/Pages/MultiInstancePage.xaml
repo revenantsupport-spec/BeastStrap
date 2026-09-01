@@ -225,18 +225,10 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock FontSize="14" Text="{Binding RunningInstancesHeader, Mode=OneWay}" />
                         <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"
-                                   Text="Live list of RobloxPlayerBeta processes. The previews update at 30 FPS by default — dial them down for big farms. Use the per-row kill button to close a specific instance." />
+                                   Text="Live list of RobloxPlayerBeta processes. Use the per-row kill button to close a specific instance." />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Preview FPS" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <ComboBox Width="64" Margin="0,0,12,0"
-                                  ItemsSource="{Binding PreviewFpsOptions}"
-                                  SelectedItem="{Binding InstancePreviewFps, Mode=TwoWay}"
-                                  ToolTip="Live preview update rate — 30 is smooth video, 10 is light on CPU for big farms." />
-                        <ui:Button MinWidth="100" Icon="ArrowClockwise24" Content="Refresh"
-                                   Command="{Binding RefreshRunningInstancesCommand, Mode=OneTime}" />
-                    </StackPanel>
+                    <ui:Button Grid.Column="1" MinWidth="100" Margin="0,0,16,0" Icon="ArrowClockwise24" Content="Refresh"
+                               Command="{Binding RefreshRunningInstancesCommand, Mode=OneTime}" />
                 </Grid>
             </ui:CardExpander.Header>
             <StackPanel>

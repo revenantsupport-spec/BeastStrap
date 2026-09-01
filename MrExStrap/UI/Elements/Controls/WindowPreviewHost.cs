@@ -1,42 +1,37 @@
 // Live preview of another window's content — the little "box of the game they're in"
-// under each running instance. Every instance runs its own background capture thread
-// (so the settings UI never blocks), paced to the InstancePreviewFps setting (default
-// 30) via PrintWindow(PW_RENDERFULLCONTENT) — the GPU-surface redirect that works for
-// games where DWM thumbnails come back blank. Buffers are reused across frames and the
-// full-window capture is downscaled to the box before conversion, so a 30fps preview
-// churns tiny bitmap allocations instead of 1080p ones every 33ms. Pauses when hidden,
-// skips minimized windows, drops stale frames instead of queuing them, and the thread
-// dies with the control.
+// under each running instance. Bitmap-captured (GDI+/PrintWindow) on a ~1.5s tick
+// instead of a DWM thumbnail: DWM thumbnails come back blank for hardware-accelerated
+// (D3D/Vulkan) windows and need a sized destination host — PrintWindow with
+// PW_RENDERFULLCONTENT redirects the DX surface instead and works for games. Auto-pauses
+// when the row/tab is hidden, keeps the last good frame on a failed capture, and stops
+// its timer when removed from the tree so it can never leak.
 
-using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace BeastStrap.UI.Elements.Controls
 {
     public class WindowPreviewHost : System.Windows.Controls.Image
     {
         private const uint PW_RENDERFULLCONTENT = 0x00000002;
-        private const int DefaultFps = 30;
 
-        private readonly CancellationTokenSource _cts = new();
-        private readonly object _captureLock = new();
-        private Thread? _thread;
-        private Bitmap? _buffer;   // full-window capture buffer, reused across frames
-        private Bitmap? _scaled;   // box-sized result buffer, reused across frames
-        private bool _paused = true;
-        private int _targetW = 96;
-        private int _targetH = 54;
+        private static readonly TimeSpan CaptureInterval = TimeSpan.FromSeconds(1.5);
+
+        private readonly DispatcherTimer _timer = new(DispatcherPriority.Background) { Interval = CaptureInterval };
 
         public WindowPreviewHost()
         {
+            _timer.Tick += (_, _) => Capture();
             IsVisibleChanged += OnVisibleChanged;
-            Unloaded += (_, _) => StopThread();
+
+            // The tab rebuilds the list on every Refresh; a timer that stays alive keeps its
+            // closure (this control) alive forever via the Dispatcher's reference. Stop it.
+            Unloaded += (_, _) => _timer.Stop();
         }
 
         public static readonly DependencyProperty SourceWindowHandleProperty =
@@ -50,82 +45,33 @@ namespace BeastStrap.UI.Elements.Controls
         }
 
         private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-            => ((WindowPreviewHost)d).EnsureThread();
+            => ((WindowPreviewHost)d).OnSourceChanged();
 
-        protected override void OnRenderSizeChanged(System.Windows.SizeChangedInfo sizeInfo)
+        private void OnSourceChanged()
         {
-            base.OnRenderSizeChanged(sizeInfo);
-            _targetW = Math.Max(1, (int)Math.Round(ActualWidth));
-            _targetH = Math.Max(1, (int)Math.Round(ActualHeight));
+            UpdateTimer();
+            Capture(); // grab immediately when a refresh runs
         }
 
         private void OnVisibleChanged(object? sender, DependencyPropertyChangedEventArgs e)
+            => UpdateTimer();
+
+        private void UpdateTimer()
         {
-            _paused = !IsVisible;
-            if (IsVisible && SourceWindowHandle != IntPtr.Zero)
-                EnsureThread();
+            bool shouldRun = IsVisible && SourceWindowHandle != IntPtr.Zero;
+            if (shouldRun && !_timer.IsEnabled)
+                _timer.Start();
+            else if (!shouldRun && _timer.IsEnabled)
+                _timer.Stop();
         }
 
-        private void EnsureThread()
+        private void Capture()
         {
-            if (_thread is { IsAlive: true })
+            if (!IsVisible || SourceWindowHandle == IntPtr.Zero)
                 return;
 
-            _thread = new Thread(CaptureLoop)
-            {
-                IsBackground = true,
-                Name = "InstancePreview"
-            };
-            _thread.Start();
-        }
-
-        private void StopThread()
-        {
-            _cts.Cancel();
-            try { _thread?.Join(300); } catch { }
-            _thread = null;
-        }
-
-        private static int ReadTargetFps()
-        {
-            int fps = App.Settings?.Prop?.InstancePreviewFps ?? DefaultFps;
-            return Math.Clamp(fps, 1, 60);
-        }
-
-        private void CaptureLoop()
-        {
-            var sw = Stopwatch.StartNew();
-
-            while (!_cts.IsCancellationRequested)
-            {
-                if (_paused || SourceWindowHandle == IntPtr.Zero || IsIconic(SourceWindowHandle))
-                {
-                    Thread.Sleep(40);
-                    continue;
-                }
-
-                double intervalMs = 1000.0 / ReadTargetFps();
-
-                try
-                {
-                    CaptureFrame();
-                }
-                catch
-                {
-                    // keep the last good frame; next tick retries
-                }
-
-                double elapsedMs = sw.Elapsed.TotalMilliseconds;
-                double waitMs = intervalMs - elapsedMs;
-                Thread.Sleep(waitMs > 0 ? (int)waitMs : 1);
-                sw.Restart();
-            }
-        }
-
-        private void CaptureFrame()
-        {
             IntPtr hwnd = SourceWindowHandle;
-            if (hwnd == IntPtr.Zero)
+            if (hwnd == IntPtr.Zero || IsIconic(hwnd))
                 return;
 
             if (!GetWindowRect(hwnd, out RECT winRect))
@@ -133,28 +79,35 @@ namespace BeastStrap.UI.Elements.Controls
 
             int winW = winRect.Right - winRect.Left;
             int winH = winRect.Bottom - winRect.Top;
-            if (winW <= 0 || winH <= 0 || winW > 8192 || winH > 8192)
+            if (winW <= 0 || winH <= 0)
                 return;
 
-            lock (_captureLock)
+            // Crop to the client area so the border/title bar doesn't eat the thumbnail.
+            int offsetX = 0, offsetY = 0, clientW = winW, clientH = winH;
+            if (GetClientRect(hwnd, out RECT clientRect) && clientRect.Right > 0 && clientRect.Bottom > 0)
             {
-                if (_buffer is null || _buffer.Width != winW || _buffer.Height != winH)
-                {
-                    _buffer?.Dispose();
-                    _buffer = new Bitmap(winW, winH, PixelFormat.Format32bppArgb);
-                }
+                clientW = clientRect.Right - clientRect.Left;
+                clientH = clientRect.Bottom - clientRect.Top;
 
-                bool ok;
-                using (var g = Graphics.FromImage(_buffer))
+                var origin = new POINT();
+                ClientToScreen(hwnd, ref origin);
+
+                offsetX = Math.Clamp(origin.X - winRect.Left, 0, Math.Max(0, winW - 1));
+                offsetY = Math.Clamp(origin.Y - winRect.Top, 0, Math.Max(0, winH - 1));
+            }
+
+            try
+            {
+                using var frame = new Bitmap(winW, winH, PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(frame))
                 {
                     IntPtr hdc = g.GetHdc();
                     try
                     {
                         // PW_RENDERFULLCONTENT redirects the GPU surface; fall back to the
                         // plain WM_PRINT capture if the full-content flag isn't supported.
-                        ok = PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT);
-                        if (!ok)
-                            ok = PrintWindow(hwnd, hdc, 0);
+                        if (!PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT))
+                            PrintWindow(hwnd, hdc, 0);
                     }
                     finally
                     {
@@ -162,42 +115,39 @@ namespace BeastStrap.UI.Elements.Controls
                     }
                 }
 
-                if (!ok)
-                    return;
+                using var cropped = (offsetX != 0 || offsetY != 0 || clientW != winW || clientH != winH)
+                    ? Crop(frame, offsetX, offsetY, clientW, clientH)
+                    : null;
 
-                if (_scaled is null || _scaled.Width != _targetW || _scaled.Height != _targetH)
-                {
-                    _scaled?.Dispose();
-                    _scaled = new Bitmap(_targetW, _targetH, PixelFormat.Format32bppArgb);
-                }
+                Bitmap final = cropped ?? frame;
 
-                using (var g = Graphics.FromImage(_scaled))
-                {
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    g.DrawImage(_buffer, new Rectangle(0, 0, _targetW, _targetH));
-                }
-
-                IntPtr hbitmap = _scaled.GetHbitmap();
+                IntPtr hbitmap = IntPtr.Zero;
                 try
                 {
+                    hbitmap = final.GetHbitmap();
                     var source = Imaging.CreateBitmapSourceFromHBitmap(
                         hbitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
                     source.Freeze();
-
-                    // Drop the stale frame if the UI thread is already behind — the next tick
-                    // always has a fresher one. Latest-wins, never a queue.
-                    App.Current?.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        if (!_cts.IsCancellationRequested)
-                            Source = source;
-                    }));
+                    Source = source;
                 }
                 finally
                 {
-                    DeleteObject(hbitmap);
+                    if (hbitmap != IntPtr.Zero)
+                        DeleteObject(hbitmap);
                 }
             }
+            catch
+            {
+                // Keep the last good frame; the next tick retries.
+            }
+        }
+
+        private static Bitmap Crop(Bitmap source, int x, int y, int width, int height)
+        {
+            var result = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(result))
+                g.DrawImage(source, new Rectangle(0, 0, width, height), new Rectangle(x, y, width, height), GraphicsUnit.Pixel);
+            return result;
         }
 
         #region P/Invoke
@@ -211,8 +161,21 @@ namespace BeastStrap.UI.Elements.Controls
             public int Bottom;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
 
         [DllImport("user32.dll")]
         private static extern bool IsIconic(IntPtr hWnd);

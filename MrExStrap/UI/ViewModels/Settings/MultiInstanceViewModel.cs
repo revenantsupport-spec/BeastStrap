@@ -294,22 +294,6 @@ namespace BeastStrap.UI.ViewModels.Settings
             }
         }
 
-        // ---- Live instance previews ----
-
-        // Options for the preview-rate dropdown. The value is read live by every preview
-        // capture thread, so changing it takes effect immediately — no tab refresh needed.
-        public IReadOnlyList<int> PreviewFpsOptions { get; } = new[] { 10, 15, 30, 60 };
-
-        public int InstancePreviewFps
-        {
-            get => App.Settings.Prop.InstancePreviewFps;
-            set
-            {
-                App.Settings.Prop.InstancePreviewFps = Math.Clamp(value, 1, 60);
-                OnPropertyChanged(nameof(InstancePreviewFps));
-            }
-        }
-
         // When on, launches open to the Roblox home screen and the Place/Job fields are ignored.
         public bool LaunchToHome
         {
