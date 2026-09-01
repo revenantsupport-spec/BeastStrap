@@ -183,6 +183,11 @@ namespace BeastStrap.Models.Persistable
         // priority). Reclaims physical RAM Windows would otherwise keep resident per instance.
         public bool MultiInstanceRamReducerTrimWorkingSet { get; set; } = true;
 
+        // Multi Instance tab live preview refresh rate. Each running instance captures its
+        // window on a background thread at this FPS. 30 gives smooth video previews; drop it
+        // for big farms to save CPU. Clamped 1..60 on write.
+        public int InstancePreviewFps { get; set; } = 30;
+
         // AltGen tab: the user's OWN BloxGen API key (https://bloxgen.net). Stored locally only —
         // we never ship a key. Each user supplies their own (signs up via the affiliate link on
         // the tab). Empty until entered.
