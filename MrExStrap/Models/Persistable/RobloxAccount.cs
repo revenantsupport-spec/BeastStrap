@@ -33,6 +33,11 @@ namespace BeastStrap.Models.Persistable
         // Applied as a per-launch override only; it never changes the global active profile.
         public string VersionProfileId { get; set; } = "";
 
+        // Main-account preference (BeastStrap fork feature): bulk launches open this account
+        // FIRST so its window lands at the front of the Alt+Tab strip, and the account row
+        // shows a marker. Only one account can be main; the UI enforces it on write.
+        public bool IsMain { get; set; } = false;
+
         // Best label to show in the UI. Pure logic, not persisted.
         [JsonIgnore]
         public string DisplayLabel =>

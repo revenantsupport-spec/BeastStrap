@@ -93,5 +93,11 @@ namespace BeastStrap.Models.Persistable
         // Tags of sidebar tabs the user pinned to the top. Stored as a list of Tag values
         // matching the NavigationItem.Tag entries (e.g. "mods", "fastflags", "appearance").
         public List<string> PinnedSidebarTabs { get; set; } = new();
+
+        // PID of the instance the user marked as "main" on the Multi Instance tab. The tab
+        // re-applies the ★ MAIN window title for this PID while it runs and sorts it to the
+        // top. Zero = no main marked. Survives app restarts so the marker comes back when
+        // the tab reopens.
+        public int MainInstancePid { get; set; } = 0;
     }
 }

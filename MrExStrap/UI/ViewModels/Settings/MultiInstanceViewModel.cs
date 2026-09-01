@@ -1,6 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
@@ -45,6 +43,31 @@ namespace BeastStrap.UI.ViewModels.Settings
                 OnPropertyChanged(nameof(VersionProfileId));
             }
         }
+
+        // Marks this saved account as the main one. Bulk launches open it first so its window
+        // sits at the front of the Alt+Tab strip. Only one account can be main at a time.
+        public bool IsMain
+        {
+            get => Account.IsMain;
+            set
+            {
+                if (value == Account.IsMain)
+                    return;
+
+                if (value)
+                {
+                    foreach (var other in App.Accounts.Prop.Accounts)
+                    {
+                        if (other.Id != Account.Id)
+                            other.IsMain = false;
+                    }
+                }
+
+                Account.IsMain = value;
+                App.Accounts.Save();
+                OnPropertyChanged(nameof(IsMain));
+            }
+        }
     }
 
     // One entry in an account row's version dropdown. An empty Id means "use the active profile".
@@ -53,6 +76,41 @@ namespace BeastStrap.UI.ViewModels.Settings
         public string Id { get; }
         public string Name { get; }
         public ProfileChoice(string id, string name) { Id = id; Name = name; }
+    }
+
+    // One row in the running-instances list. Wraps a live RobloxPlayerBeta snapshot and adds
+    // the main-instance marking without touching the immutable RobloxInstanceInfo record.
+    public class RunningInstanceRow : NotifyPropertyChangedViewModel
+    {
+        public RunningInstanceRow(int pid, string uptime, long memoryMb, string title, IntPtr windowHandle)
+        {
+            Pid = pid;
+            Uptime = uptime;
+            MemoryMb = memoryMb;
+            WindowTitle = title;
+            WindowHandle = windowHandle;
+        }
+
+        public int Pid { get; }
+        public string Uptime { get; }
+        public long MemoryMb { get; }
+        public string WindowTitle { get; }
+
+        // Main window of the client, used by the DWM live preview box and the title rewrite.
+        public IntPtr WindowHandle { get; }
+
+        private bool _isMain;
+        public bool IsMain
+        {
+            get => _isMain;
+            set
+            {
+                if (_isMain == value)
+                    return;
+                _isMain = value;
+                OnPropertyChanged(nameof(IsMain));
+            }
+        }
     }
 
     public class MultiInstanceViewModel : NotifyPropertyChangedViewModel
@@ -66,7 +124,7 @@ namespace BeastStrap.UI.ViewModels.Settings
         // never write back into a live ComboBox selection.
         public ObservableCollection<ProfileChoice> AvailableProfiles { get; } = new();
 
-        public ObservableCollection<RobloxInstanceInfo> RunningInstances { get; } = new();
+        public ObservableCollection<RunningInstanceRow> RunningInstances { get; } = new();
 
         public MultiInstanceViewModel()
         {
@@ -319,6 +377,9 @@ namespace BeastStrap.UI.ViewModels.Settings
             if (!home && !TryGetPlaceId(out placeId))
                 return;
 
+            // The main account opens first so its window sits at the front of the Alt+Tab strip.
+            accounts = accounts.OrderByDescending(a => a.IsMain).ToList();
+
             IsLaunching = true;
             await _launchGate.WaitAsync();
             try
@@ -368,6 +429,7 @@ namespace BeastStrap.UI.ViewModels.Settings
 
         public ICommand RefreshRunningInstancesCommand => new RelayCommand(RefreshRunningInstances);
         public ICommand KillInstanceCommand => new RelayCommand<int>(KillInstance);
+        public ICommand SetMainInstanceCommand => new RelayCommand<int>(SetMainInstance);
 
         private void RefreshRunningInstances()
         {
@@ -375,27 +437,49 @@ namespace BeastStrap.UI.ViewModels.Settings
 
             try
             {
+                var rows = new List<RunningInstanceRow>();
+
                 foreach (var p in Process.GetProcessesByName("RobloxPlayerBeta"))
                 {
                     string uptime;
                     long memMb = 0;
+                    string title = "";
+                    IntPtr hwnd = IntPtr.Zero;
+
                     try
                     {
                         uptime = FormatUptime(DateTime.Now - p.StartTime);
                         memMb = p.WorkingSet64 / 1024 / 1024;
+                        hwnd = InstanceWindow.FindMainWindow(p.Id);
+                        title = hwnd == IntPtr.Zero ? "" : InstanceWindow.GetWindowTitle(hwnd);
                     }
                     catch
                     {
                         uptime = "?";
                     }
 
-                    string title = "";
-                    try { title = GetMainWindowTitle(p.Id); }
-                    catch { }
-
-                    RunningInstances.Add(new RobloxInstanceInfo(p.Id, uptime, memMb, title));
+                    rows.Add(new RunningInstanceRow(p.Id, uptime, memMb, title, hwnd));
                     p.Dispose();
                 }
+
+                // Persisted main marking: if the saved PID is gone, clear it; otherwise flag the
+                // row and re-arm the title marker (idempotent — an already-running marker no-ops).
+                int mainPid = App.State.Prop.MainInstancePid;
+                bool mainAlive = rows.Any(r => r.Pid == mainPid);
+                if (!mainAlive && mainPid != 0)
+                {
+                    App.State.Prop.MainInstancePid = 0;
+                    App.State.Save();
+                }
+
+                foreach (var row in rows)
+                    row.IsMain = row.Pid == mainPid;
+
+                foreach (var row in rows.OrderByDescending(r => r.IsMain).ThenBy(r => r.Pid))
+                    RunningInstances.Add(row);
+
+                if (mainAlive)
+                    MainInstanceMarker.Mark(mainPid);
             }
             catch (Exception ex)
             {
@@ -408,6 +492,14 @@ namespace BeastStrap.UI.ViewModels.Settings
 
         private void KillInstance(int pid)
         {
+            MainInstanceMarker.Unmark(pid);
+
+            if (App.State.Prop.MainInstancePid == pid)
+            {
+                App.State.Prop.MainInstancePid = 0;
+                App.State.Save();
+            }
+
             try
             {
                 using var proc = Process.GetProcessById(pid);
@@ -421,6 +513,33 @@ namespace BeastStrap.UI.ViewModels.Settings
             RefreshRunningInstances();
         }
 
+        // Marks a running instance as the main one: gold badge + top-of-list in the tab, the
+        // Roblox window gets a re-applied "★ MAIN — <game>" title (see MainInstanceMarker) so
+        // Alt+Tab shows it instantly, and it's brought to the foreground right now. Persisted
+        // in State so the marking survives an app restart while the client runs.
+        private void SetMainInstance(int pid)
+        {
+            if (RunningInstances.All(r => r.Pid != pid))
+                return;
+
+            foreach (var row in RunningInstances)
+                row.IsMain = row.Pid == pid;
+
+            App.State.Prop.MainInstancePid = pid;
+            App.State.Save();
+
+            MainInstanceMarker.Mark(pid);
+
+            // Re-sort so the main sits on top without rebuilding the collection.
+            var ordered = RunningInstances.OrderByDescending(r => r.IsMain).ThenBy(r => r.Pid).ToList();
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                int current = RunningInstances.IndexOf(ordered[i]);
+                if (current != i)
+                    RunningInstances.Move(current, i);
+            }
+        }
+
         private static string FormatUptime(TimeSpan t)
         {
             if (t.TotalDays >= 1) return $"{(int)t.TotalDays}d {t.Hours}h";
@@ -428,45 +547,5 @@ namespace BeastStrap.UI.ViewModels.Settings
             if (t.TotalMinutes >= 1) return $"{(int)t.TotalMinutes}m {t.Seconds}s";
             return $"{(int)t.TotalSeconds}s";
         }
-
-        private static string GetMainWindowTitle(int pid)
-        {
-            string result = "";
-            EnumWindows((hWnd, _) =>
-            {
-                GetWindowThreadProcessId(hWnd, out uint winPid);
-                if ((int)winPid != pid) return true;
-                if (!IsWindowVisible(hWnd)) return true;
-
-                int len = GetWindowTextLength(hWnd);
-                if (len == 0) return true;
-
-                var sb = new StringBuilder(len + 1);
-                GetWindowText(hWnd, sb, sb.Capacity);
-                string title = sb.ToString();
-                if (string.IsNullOrWhiteSpace(title)) return true;
-
-                result = title;
-                return false;
-            }, IntPtr.Zero);
-            return result;
-        }
-
-        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        [DllImport("user32.dll")]
-        private static extern bool IsWindowVisible(IntPtr hWnd);
-
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-        [DllImport("user32.dll")]
-        private static extern int GetWindowTextLength(IntPtr hWnd);
     }
 }

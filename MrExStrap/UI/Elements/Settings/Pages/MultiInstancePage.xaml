@@ -63,6 +63,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"
                                       IsChecked="{Binding IsSelected, Mode=TwoWay}"
@@ -87,10 +88,14 @@
                                               ToolTip="Which Versions Manager profile this account launches with. 'Default' uses your active version." />
                                 </StackPanel>
                             </StackPanel>
-                            <ui:Button Grid.Column="3" Icon="Play24" Content="Launch" Margin="0,0,8,0"
+                            <CheckBox Grid.Column="3" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      IsChecked="{Binding IsMain, Mode=TwoWay}"
+                                      Content="Main"
+                                      ToolTip="Set as the main account — bulk launches open this one first so its window sits at the front of the Alt+Tab strip." />
+                            <ui:Button Grid.Column="4" Icon="Play24" Content="Launch" Margin="0,0,8,0"
                                        Command="{Binding DataContext.LaunchAccountCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                        CommandParameter="{Binding}" />
-                            <ui:Button Grid.Column="4" Icon="Delete24" Appearance="Danger" ToolTip="Remove account"
+                            <ui:Button Grid.Column="5" Icon="Delete24" Appearance="Danger" ToolTip="Remove account"
                                        Command="{Binding DataContext.RemoveAccountCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                        CommandParameter="{Binding}" />
                         </Grid>
@@ -233,31 +238,60 @@
                 <ItemsControl ItemsSource="{Binding RunningInstances, Mode=OneWay}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="0,4,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding Pid}" FontFamily="Consolas" FontSize="12"
-                                           VerticalAlignment="Center" MinWidth="60" />
-                                <TextBlock Grid.Column="1" Text="{Binding Uptime}" FontSize="12" Margin="12,0,0,0"
-                                           VerticalAlignment="Center" MinWidth="80"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                <TextBlock Grid.Column="2" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="80"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                                    <Run Text="{Binding MemoryMb, Mode=OneWay}" />
-                                    <Run Text=" MB" />
-                                </TextBlock>
-                                <TextBlock Grid.Column="3" Text="{Binding WindowTitle}" FontSize="12" Margin="12,0,8,0"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                                <ui:Button Grid.Column="4" MinWidth="70" Icon="Dismiss24" Content="Kill" Appearance="Danger"
-                                           Command="{Binding DataContext.KillInstanceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                           CommandParameter="{Binding Pid}" />
-                            </Grid>
+                            <Border Margin="0,4,0,4" Padding="8" CornerRadius="6">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMain}" Value="True">
+                                                <Setter Property="Background" Value="#1AFFB300" />
+                                                <Setter Property="BorderBrush" Value="#FFFFB300" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Live DWM preview of the client's window — the little box of the game it's in -->
+                                    <controls:WindowThumbnailHost Grid.Column="0" Width="96" Height="54" Margin="0,0,12,0"
+                                                                  SourceWindowHandle="{Binding WindowHandle}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Pid}" FontFamily="Consolas" FontSize="12"
+                                               VerticalAlignment="Center" MinWidth="52" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Uptime}" FontSize="12" Margin="12,0,0,0"
+                                               VerticalAlignment="Center" MinWidth="70"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Grid.Column="3" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="70"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                        <Run Text="{Binding MemoryMb, Mode=OneWay}" />
+                                        <Run Text=" MB" />
+                                    </TextBlock>
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,8,0">
+                                        <TextBlock Text="★ MAIN" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFB300"
+                                                   Margin="0,0,8,0" VerticalAlignment="Center"
+                                                   Visibility="{Binding IsMain, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <TextBlock Text="{Binding WindowTitle}" FontSize="12" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="260"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="5" Icon="Star24" Margin="0,0,6,0"
+                                               ToolTip="Set as main instance — retitles its window with a ★ MAIN marker, brings it to the front, and pins it to the top of this list."
+                                               Command="{Binding DataContext.SetMainInstanceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               CommandParameter="{Binding Pid}" />
+                                    <ui:Button Grid.Column="6" MinWidth="70" Icon="Dismiss24" Content="Kill" Appearance="Danger"
+                                               Command="{Binding DataContext.KillInstanceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               CommandParameter="{Binding Pid}" />
+                                </Grid>
+                            </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
