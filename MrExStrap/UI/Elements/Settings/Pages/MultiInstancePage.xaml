@@ -262,8 +262,9 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <!-- Live DWM preview of the client's window — the little box of the game it's in -->
-                                    <controls:WindowThumbnailHost Grid.Column="0" Width="96" Height="54" Margin="0,0,12,0"
+                                    <!-- Live preview of the client's window — the little box of the game it's in -->
+                                    <controls:WindowPreviewHost Grid.Column="0" Width="96" Height="54" Margin="0,0,12,0"
+                                                                  Stretch="UniformToFill" SnapsToDevicePixels="True"
                                                                   SourceWindowHandle="{Binding WindowHandle}" />
                                     <TextBlock Grid.Column="1" Text="{Binding Pid}" FontFamily="Consolas" FontSize="12"
                                                VerticalAlignment="Center" MinWidth="52" />
