@@ -286,7 +286,20 @@ namespace BeastStrap.UI.ViewModels.Settings
                     return;
                 }
                 customNormalized = MacSpoofer.NormalizeMacHex(CustomMac);
+
+                // A heads-up, not a veto — it is their machine and some drivers do take these.
+                // But the locally-administered bit is the usual reason a hand-typed MAC gets
+                // ignored, so say it before the write instead of after the disappointment.
+                if (!MacSpoofer.IsLocallyAdministered(customNormalized))
+                    Log($"{NetworkAdapter.FormatMac(customNormalized)} isn't a locally administered address — its second hex digit isn't 2, 6, A or E. Plenty of drivers won't accept one of these. If the spoof doesn't stick, that's the first thing to change.");
             }
+
+            // One bucket per outcome. A spoof pass has four possible endings per adapter now, and
+            // the three that aren't success were all being reported as success.
+            var applied = new List<string>();
+            var rejected = new List<string>();
+            var unconfirmed = new List<string>();
+            var writeFailed = new List<string>();
 
             await Task.Run(() =>
             {
@@ -307,21 +320,76 @@ namespace BeastStrap.UI.ViewModels.Settings
                     }
 
                     Log($"Spoofing {adapter.Name} → {NetworkAdapter.FormatMac(newMac)}…");
-                    bool ok = MacSpoofer.SpoofAdapter(adapter, newMac, Log);
+                    var outcome = MacSpoofer.SpoofAdapter(adapter, newMac, Log);
 
-                    if (ok && !App.Settings.Prop.BanAsyncSpoofedAdapterGuids.Contains(adapter.Id))
+                    switch (outcome)
+                    {
+                        case MacSpoofOutcome.Applied: applied.Add(adapter.Name); break;
+                        case MacSpoofOutcome.NotApplied: rejected.Add(adapter.Name); break;
+                        case MacSpoofOutcome.Unverified: unconfirmed.Add(adapter.Name); break;
+                        case MacSpoofOutcome.WriteFailed: writeFailed.Add(adapter.Name); break;
+                    }
+
+                    // Remember every adapter that got as far as the registry, not just the ones
+                    // that worked. The override exists either way, so Revert and the
+                    // Persistent=off cleanup on exit both need to know about it — dropping it
+                    // would strand a NetworkAddress value that could still take on a later driver
+                    // reload with nobody watching.
+                    if (outcome != MacSpoofOutcome.WriteFailed
+                        && !App.Settings.Prop.BanAsyncSpoofedAdapterGuids.Contains(adapter.Id))
                     {
                         Application.Current?.Dispatcher?.Invoke(() =>
                             App.Settings.Prop.BanAsyncSpoofedAdapterGuids.Add(adapter.Id));
                     }
 
-                    if (ok && DhcpRefreshAfterSpoof)
+                    // Only renew the lease when the MAC really changed. Otherwise this drops the
+                    // network for a few seconds and achieves nothing.
+                    if (outcome == MacSpoofOutcome.Applied && DhcpRefreshAfterSpoof)
                         MacSpoofer.DhcpRefresh(adapter.Name, Log);
                 }
             });
 
-            Log("Spoof pass finished. Refreshing adapter list…");
+            Log($"Spoof pass finished: {applied.Count} confirmed, {rejected.Count} refused by the driver, {unconfirmed.Count} unconfirmed, {writeFailed.Count} not written. Refreshing adapter list…");
             RefreshAdapters();
+
+            // Say it out loud when anything fell short of a confirmed change. A user who thinks
+            // they are spoofed and isn't is worse off than one who knows it didn't work. Nothing
+            // pops on a clean pass — the log line and the refreshed Current MAC cover that.
+            if (rejected.Count > 0 || unconfirmed.Count > 0 || writeFailed.Count > 0)
+                ShowSpoofOutcomeMessage(applied, rejected, unconfirmed, writeFailed);
+        }
+
+        // The spoof pass used to finish silently no matter what happened, and its idea of success
+        // was only ever "netsh exited zero". Anything short of a confirmed MAC change gets said to
+        // the user's face now, with the specific thing they can do about it.
+        private static void ShowSpoofOutcomeMessage(
+            List<string> applied, List<string> rejected, List<string> unconfirmed, List<string> writeFailed)
+        {
+            string message = "";
+
+            if (applied.Count > 0)
+                message += $"Spoofed and confirmed: {string.Join(", ", applied)}\n\n";
+
+            if (rejected.Count > 0)
+                message += $"The network driver refused the new MAC on: {string.Join(", ", rejected)}\n\n" +
+                           "Windows accepted the setting but the driver kept the card's real MAC, so nothing changed on " +
+                           "those adapters. Some drivers only take certain addresses and a few don't allow this at all. " +
+                           "The setting is still in the registry, so use Revert MAC to clear it.\n\n";
+
+            if (unconfirmed.Count > 0)
+                message += $"Couldn't confirm the MAC on: {string.Join(", ", unconfirmed)}\n\n" +
+                           "Either the adapter didn't come back in time for us to check it, or it couldn't be restarted " +
+                           "so the driver hasn't re-read the new MAC yet. The activity log says which. Disabling and " +
+                           "re-enabling the adapter in Network Connections, or a reboot, usually finishes the job.\n\n";
+
+            if (writeFailed.Count > 0)
+                message += $"Nothing was written for: {string.Join(", ", writeFailed)}\n\n" +
+                           "The registry write itself failed, so those adapters were left alone. The activity log has " +
+                           "the reason.\n\n";
+
+            message += "The activity log on this page has the full detail.";
+
+            Frontend.ShowMessageBox(message, MessageBoxImage.Warning);
         }
 
         private async Task RevertAsync()

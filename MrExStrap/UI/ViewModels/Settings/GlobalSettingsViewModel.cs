@@ -44,9 +44,19 @@ namespace BeastStrap.UI.ViewModels.Settings
                 if (!GBS.Loaded)
                     return "The settings file exists but couldn't be read. It may be corrupt — use Reset to restore Roblox's copy.";
 
+                // Unsaved edits come first, because this is the one that actually bites: nothing else
+                // in the app makes you press a button to save, so a typed value looks applied when it
+                // is still only in memory.
+                if (GBS.Dirty)
+                    return "You've changed something but haven't pressed Apply yet — nothing is saved until you do.";
+
+                // When locked, say what that costs. "Roblox can't overwrite these" reads like a win
+                // and hides the part people actually trip over — that Roblox's own settings menu
+                // stops saving anything at all.
                 return GBS.IsLocked
-                    ? "Locked. Roblox can't overwrite these when it closes."
-                    : "Unlocked. Roblox will overwrite these when it next closes — turn on Lock to make them stick.";
+                    ? "Locked. Your changes stick, but Roblox can no longer save ANY of its own settings — "
+                      + "change them here and press Apply, or turn Lock off to use Roblox's menu again."
+                    : "Unlocked. Roblox rewrites this file when it starts, and resets some settings when it does — the performance stats overlay is one. Turn on Lock if something won't stay changed.";
             }
         }
 
@@ -55,7 +65,7 @@ namespace BeastStrap.UI.ViewModels.Settings
         public double UiTransparency
         {
             get => GBS.GetFloat(GBS.UiTransparency, 1f);
-            set { GBS.SetValue(GBS.UiTransparency, (float)value); OnPropertyChanged(nameof(UiTransparency)); }
+            set { GBS.SetValue(GBS.UiTransparency, (float)value); OnPropertyChanged(nameof(UiTransparency)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public IEnumerable<string> TextSizes { get; } = new[] { "Small", "Normal", "Large", "Largest" };
@@ -72,44 +82,44 @@ namespace BeastStrap.UI.ViewModels.Settings
             {
                 int i = Array.IndexOf((string[])TextSizes, value);
                 GBS.SetValue(GBS.TextSize, i < 0 ? 1 : i);
-                OnPropertyChanged(nameof(SelectedTextSize));
+                OnPropertyChanged(nameof(SelectedTextSize)); OnPropertyChanged(nameof(StatusText));
             }
         }
 
         public bool ReducedMotion
         {
             get => GBS.GetBool(GBS.ReducedMotion);
-            set { GBS.SetValue(GBS.ReducedMotion, value); OnPropertyChanged(nameof(ReducedMotion)); }
+            set { GBS.SetValue(GBS.ReducedMotion, value); OnPropertyChanged(nameof(ReducedMotion)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public bool ChatVisible
         {
             get => GBS.GetBool(GBS.ChatVisible, true);
-            set { GBS.SetValue(GBS.ChatVisible, value); OnPropertyChanged(nameof(ChatVisible)); }
+            set { GBS.SetValue(GBS.ChatVisible, value); OnPropertyChanged(nameof(ChatVisible)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public bool PlayerNames
         {
             get => GBS.GetBool(GBS.PlayerNames, true);
-            set { GBS.SetValue(GBS.PlayerNames, value); OnPropertyChanged(nameof(PlayerNames)); }
+            set { GBS.SetValue(GBS.PlayerNames, value); OnPropertyChanged(nameof(PlayerNames)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public bool PlayerList
         {
             get => GBS.GetBool(GBS.PlayerList, true);
-            set { GBS.SetValue(GBS.PlayerList, value); OnPropertyChanged(nameof(PlayerList)); }
+            set { GBS.SetValue(GBS.PlayerList, value); OnPropertyChanged(nameof(PlayerList)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public bool BadgeVisible
         {
             get => GBS.GetBool(GBS.BadgeVisible, true);
-            set { GBS.SetValue(GBS.BadgeVisible, value); OnPropertyChanged(nameof(BadgeVisible)); }
+            set { GBS.SetValue(GBS.BadgeVisible, value); OnPropertyChanged(nameof(BadgeVisible)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public bool PerformanceStats
         {
             get => GBS.GetBool(GBS.PerformanceStats);
-            set { GBS.SetValue(GBS.PerformanceStats, value); OnPropertyChanged(nameof(PerformanceStats)); }
+            set { GBS.SetValue(GBS.PerformanceStats, value); OnPropertyChanged(nameof(PerformanceStats)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         // ===== Graphics and rendering =====
@@ -117,28 +127,34 @@ namespace BeastStrap.UI.ViewModels.Settings
         // -1 is the engine default (shown as 60 in the UI). GlobalBasicSettings stores the
         // <int name="FramerateCap"> value; FishStrap maps <1 -> -1 on save and <1 -> 60 on load.
         // See D:\FishStrap\Bloxstrap\UI\ViewModels\Settings\GlobalSettingsViewModel.cs:14-35
-        public int FramerateCap
+        public string FramerateCap
         {
             get
             {
-                // FishStrap default is 60 when parsing fails; original BeastStrap used 240.
+                // FishStrap default is 60 when parsing fails; -1 is the engine default.
                 // Match FishStrap: if stored <1, show 60.
                 string? raw = GBS.GetValue(GBS.FramerateCap);
                 if (int.TryParse(raw, out int framerate))
                 {
                     if (framerate < 1)
-                        return 60;
-                    return framerate;
+                        return "60";
+                    return framerate.ToString();
                 }
-                return 60;
+                return "60";
             }
             set
             {
-                if (value < 1)
-                    value = -1;
+                // Anything unparseable used to be dropped in silence, and because OnPropertyChanged
+                // then snapped the box back to the old number it looked like the field was refusing
+                // to change. Say what went wrong instead.
+                if (int.TryParse(value, out int fps) && fps >= 0)
+                    GBS.SetValue(GBS.FramerateCap, fps < 1 ? -1 : fps);
+                else if (!string.IsNullOrWhiteSpace(value))
+                    Frontend.ShowMessageBox(
+                        $"\"{value}\" isn't a framerate. Enter a whole number, like 60 or 240 — or 0 to let Roblox decide.",
+                        MessageBoxImage.Warning);
 
-                GBS.SetValue(GBS.FramerateCap, value);
-                OnPropertyChanged(nameof(FramerateCap));
+                OnPropertyChanged(nameof(FramerateCap)); OnPropertyChanged(nameof(StatusText));
             }
         }
 
@@ -166,7 +182,7 @@ namespace BeastStrap.UI.ViewModels.Settings
                 if (value > 10) value = 10;
 
                 GBS.SetValue(GBS.QualityLevel, value);
-                OnPropertyChanged(nameof(GraphicsQuality));
+                OnPropertyChanged(nameof(GraphicsQuality)); OnPropertyChanged(nameof(StatusText));
             }
         }
 
@@ -187,19 +203,20 @@ namespace BeastStrap.UI.ViewModels.Settings
 
                 OnPropertyChanged(nameof(SelectedQualityLevel));
                 OnPropertyChanged(nameof(GraphicsQuality));
+                OnPropertyChanged(nameof(StatusText));
             }
         }
 
         public bool Fullscreen
         {
             get => GBS.GetBool(GBS.Fullscreen, true);
-            set { GBS.SetValue(GBS.Fullscreen, value); OnPropertyChanged(nameof(Fullscreen)); }
+            set { GBS.SetValue(GBS.Fullscreen, value); OnPropertyChanged(nameof(Fullscreen)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public bool StartMaximized
         {
             get => GBS.GetBool(GBS.StartMaximized, true);
-            set { GBS.SetValue(GBS.StartMaximized, value); OnPropertyChanged(nameof(StartMaximized)); }
+            set { GBS.SetValue(GBS.StartMaximized, value); OnPropertyChanged(nameof(StartMaximized)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         // ===== Audio and input =====
@@ -207,13 +224,13 @@ namespace BeastStrap.UI.ViewModels.Settings
         public double MasterVolume
         {
             get => GBS.GetFloat(GBS.MasterVolume, 0.5f);
-            set { GBS.SetValue(GBS.MasterVolume, (float)value); OnPropertyChanged(nameof(MasterVolume)); }
+            set { GBS.SetValue(GBS.MasterVolume, (float)value); OnPropertyChanged(nameof(MasterVolume)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         public double MouseSensitivity
         {
             get => GBS.GetFloat(GBS.MouseSensitivity, 0.36f);
-            set { GBS.SetValue(GBS.MouseSensitivity, (float)value); OnPropertyChanged(nameof(MouseSensitivity)); }
+            set { GBS.SetValue(GBS.MouseSensitivity, (float)value); OnPropertyChanged(nameof(MouseSensitivity)); OnPropertyChanged(nameof(StatusText)); }
         }
 
         // ===== Lock =====
@@ -223,6 +240,28 @@ namespace BeastStrap.UI.ViewModels.Settings
             get => GBS.IsLocked;
             set
             {
+                // Locking sets the read-only attribute on the WHOLE file, so it doesn't just pin
+                // the settings on this page — Roblox stops being able to save any of its own, including
+                // ones BeastStrap never touched. Spell the trade-off out before turning it on
+                // rather than leaving them to discover it days later.
+                if (value && !GBS.IsLocked)
+                {
+                    var confirm = Frontend.ShowMessageBox(
+                        "Lock the Roblox settings file?\n\n" +
+                        "This stops Roblox saving ANY of its own settings, not just the ones on this page. " +
+                        "Framerate cap, graphics quality, volume, mouse sensitivity and fullscreen will all " +
+                        "stop changing from inside Roblox until you turn this back off.\n\n" +
+                        "While it's locked, change them here and press Apply instead.",
+                        MessageBoxImage.Warning, MessageBoxButton.YesNo, MessageBoxResult.No);
+
+                    if (confirm != MessageBoxResult.Yes)
+                    {
+                        // Snap the switch back, otherwise it sits on "on" while the file is unlocked.
+                        OnPropertyChanged(nameof(Locked));
+                        return;
+                    }
+                }
+
                 GBS.SetLocked(value);
                 OnPropertyChanged(nameof(Locked));
                 OnPropertyChanged(nameof(StatusText));

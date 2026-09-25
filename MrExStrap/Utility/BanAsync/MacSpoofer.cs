@@ -4,6 +4,26 @@ using Microsoft.Win32;
 
 namespace BeastStrap.Utility.BanAsync
 {
+    // What actually happened to a spoof attempt. SpoofAdapter used to answer this with a bool
+    // that only meant "netsh exited zero", which is a different question from "did the MAC
+    // change" — the driver gets the last word and can keep its own address without complaining.
+    public enum MacSpoofOutcome
+    {
+        // The registry write never happened. Nothing to remember, nothing to revert.
+        WriteFailed,
+
+        // The adapter came back reporting the MAC we asked for. This is the only success.
+        Applied,
+
+        // The adapter came back and is still reporting a different MAC, so the driver turned the
+        // override down. The value is still sitting in the registry and still needs reverting.
+        NotApplied,
+
+        // Written, but we could not prove it either way — the adapter didn't come back in time,
+        // or it never restarted so nothing has re-read the value yet.
+        Unverified
+    }
+
     public static class MacSpoofer
     {
         private const string LOG_IDENT = "MacSpoofer";
@@ -77,7 +97,34 @@ namespace BeastStrap.Utility.BanAsync
             return result;
         }
 
-        public static bool SpoofAdapter(NetworkAdapter adapter, string newMac, Action<string> log)
+        // Writes the override, cycles the adapter, then reads the MAC back and reports what
+        // really happened. This used to return whether netsh exited zero, which told the caller
+        // nothing about the MAC — the driver quietly keeps its own address whenever it doesn't
+        // like the override, and the whole feature reported success through that.
+        public static MacSpoofOutcome SpoofAdapter(NetworkAdapter adapter, string newMac, Action<string> log)
+        {
+            // One normalised string for both the write and the read-back, so what we compare
+            // against afterwards is exactly what went into the registry. Windows wants the value
+            // with no separators, and a hand-typed "00-11-22-…" would otherwise be written as-is.
+            string normalized = NormalizeMacHex(newMac);
+
+            if (!WriteNetworkAddress(adapter, normalized, log))
+                return MacSpoofOutcome.WriteFailed;
+
+            // Past this point the override IS in the registry whatever happens next, which is why
+            // the caller gets an outcome instead of a bool. It has to remember this adapter even
+            // when the spoof didn't take, or Revert and the Persistent=off cleanup on exit will
+            // never find the value again.
+            bool bounced = RestartAdapter(adapter.Name, log);
+            if (!bounced)
+                log($"{adapter.Name} didn't cycle cleanly. Checking what it actually reports anyway.");
+
+            return VerifyAdapterMac(adapter, normalized, bounced, log);
+        }
+
+        // The registry half on its own. False means nothing was written, so there is no leftover
+        // value for the caller to track, revert, or clear on exit.
+        private static bool WriteNetworkAddress(NetworkAdapter adapter, string newMac, Action<string> log)
         {
             if (!IsValidMacHex(newMac))
             {
@@ -100,17 +147,19 @@ namespace BeastStrap.Utility.BanAsync
             catch (SecurityException ex)
             {
                 log($"Access denied writing to {adapter.Name}. Relaunch as administrator.");
-                App.Logger.WriteException(LOG_IDENT + "::SpoofAdapter::Security", ex);
+                App.Logger.WriteException(LOG_IDENT + "::WriteNetworkAddress::Security", ex);
                 return false;
             }
             catch (Exception ex)
             {
                 log($"Failed to write MAC for {adapter.Name}: {ex.Message}");
-                App.Logger.WriteException(LOG_IDENT + "::SpoofAdapter", ex);
+                App.Logger.WriteException(LOG_IDENT + "::WriteNetworkAddress", ex);
                 return false;
             }
 
-            return RestartAdapter(adapter.Name, log);
+            // Written. Cycling the adapter and finding out whether the driver took it is
+            // SpoofAdapter's job now, because those are the two parts that can fail silently.
+            return true;
         }
 
         public static bool RevertAdapter(NetworkAdapter adapter, Action<string> log)
@@ -209,6 +258,94 @@ namespace BeastStrap.Utility.BanAsync
             return down && up;
         }
 
+        // Reads the adapter's MAC back after the bounce and says whether the spoof actually took.
+        // Windows reports whatever address the driver ended up using, so this is the only thing
+        // that can tell a real spoof apart from a write the driver quietly ignored.
+        //
+        // 'bounced' is whether the adapter really went down and came back. When it didn't, a
+        // mismatch proves nothing — the driver has not re-read NetworkAddress yet, so blaming it
+        // would be a lie in the other direction and the verdict has to stay Unverified.
+        private static MacSpoofOutcome VerifyAdapterMac(NetworkAdapter adapter, string expectedMac, bool bounced, Action<string> log)
+        {
+            // 15 seconds, not the two or three a wired card needs. An administratively disabled
+            // adapter drops out of the interface list completely, and a Wi-Fi card can take most
+            // of ten seconds to rebind after the enable. A spoof that worked returns on the first
+            // or second poll anyway, so a longer deadline only costs time on the failure path,
+            // and a wrong verdict costs far more than a wait. Don't shorten this.
+            const int TimeoutMs = 15000;
+            const int PollMs = 500;
+
+            log($"Checking what MAC {adapter.Name} actually reports…");
+
+            string? lastSeen = null;
+            DateTime deadline = DateTime.UtcNow.AddMilliseconds(TimeoutMs);
+
+            while (true)
+            {
+                string? current = ReadCurrentMac(adapter.Id);
+                if (!string.IsNullOrEmpty(current))
+                {
+                    lastSeen = current;
+                    if (string.Equals(current, expectedMac, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // A match is a match whether or not netsh was happy, so this deliberately
+                        // doesn't look at 'bounced'. What the adapter reports is the truth.
+                        log($"Confirmed {adapter.Name} is now {NetworkAdapter.FormatMac(expectedMac)}.");
+                        return MacSpoofOutcome.Applied;
+                    }
+                }
+
+                if (DateTime.UtcNow >= deadline)
+                    break;
+
+                Thread.Sleep(PollMs);
+            }
+
+            if (lastSeen is null)
+            {
+                // Never saw the adapter at all in the whole window, so there is no reading to
+                // report. Saying it "still reports" something would be inventing one.
+                log($"{adapter.Name} never came back within {TimeoutMs / 1000}s, so we couldn't read its MAC. The registry value is written either way — Revert MAC clears it.");
+                return MacSpoofOutcome.Unverified;
+            }
+
+            if (!bounced)
+            {
+                log($"{adapter.Name} still reports {NetworkAdapter.FormatMac(lastSeen)}, but it never restarted, so nothing has re-read the new MAC yet. Disable and re-enable it in Network Connections, or reboot.");
+                return MacSpoofOutcome.Unverified;
+            }
+
+            log($"{adapter.Name} still reports {NetworkAdapter.FormatMac(lastSeen)}. The driver turned down {NetworkAdapter.FormatMac(expectedMac)} and kept its own MAC. The registry value is still there, so use Revert MAC to clear it.");
+            return MacSpoofOutcome.NotApplied;
+        }
+
+        // Current MAC for one adapter GUID, or null when Windows isn't listing that adapter right
+        // now — which is exactly what happens for the whole time it is administratively disabled,
+        // so the caller has to keep polling rather than treat a null as an answer. The GUID is the
+        // same NetCfgInstanceId this class matches on in the registry, so it doesn't change when
+        // the adapter cycles, which makes it a safer key than the friendly name.
+        private static string? ReadCurrentMac(string adapterGuid)
+        {
+            try
+            {
+                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (!string.Equals(nic.Id, adapterGuid, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    string mac = nic.GetPhysicalAddress().ToString().ToUpperInvariant();
+                    return string.IsNullOrEmpty(mac) ? null : mac;
+                }
+            }
+            catch (Exception ex)
+            {
+                // One failed poll is not a verdict — let the loop try again.
+                App.Logger.WriteException(LOG_IDENT + "::ReadCurrentMac", ex);
+            }
+
+            return null;
+        }
+
         public static void DhcpRefresh(string? friendlyName, Action<string> log)
         {
             string scope = string.IsNullOrEmpty(friendlyName) ? "all adapters" : $"'{friendlyName}'";
@@ -233,6 +370,14 @@ namespace BeastStrap.Utility.BanAsync
                 bytes[0] = Convert.ToByte(ouiToMirror.Substring(0, 2), 16);
                 bytes[1] = Convert.ToByte(ouiToMirror.Substring(2, 2), 16);
                 bytes[2] = Convert.ToByte(ouiToMirror.Substring(4, 2), 16);
+
+                // …then force the locally-administered bit back on, which costs the first octet
+                // of the mirror: 00-1B-21 comes out as 02-1B-21 and the other two bytes survive.
+                // A real vendor OUI has this bit clear, and that is the specific thing NDIS
+                // miniport drivers filter a NetworkAddress override on — they keep the burned-in
+                // MAC and say nothing about it, which is how this toggle could report success and
+                // change nothing at all.
+                bytes[0] = (byte)((bytes[0] & 0xFC) | 0x02);
             }
             else
             {
@@ -254,6 +399,20 @@ namespace BeastStrap.Utility.BanAsync
         public static string NormalizeMacHex(string mac)
         {
             return mac.Replace("-", "").Replace(":", "").Replace(" ", "").ToUpperInvariant();
+        }
+
+        // True when the MAC has the locally-administered bit set on the first octet, which shows
+        // up as a second hex digit of 2, 6, A or E. Drivers that filter NetworkAddress overrides
+        // at all tend to filter on exactly this, so it is worth saying before the write rather
+        // than leaving the user to work out afterwards why their MAC didn't stick.
+        public static bool IsLocallyAdministered(string mac)
+        {
+            string clean = NormalizeMacHex(mac);
+            if (clean.Length != 12)
+                return false;
+
+            return byte.TryParse(clean.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out byte first)
+                   && (first & 0x02) != 0;
         }
 
         private static bool LooksVirtual(string text)

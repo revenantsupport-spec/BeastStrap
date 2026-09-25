@@ -54,6 +54,18 @@ namespace BeastStrap.Utility
 
         public static bool Loaded => _document is not null;
 
+        /// <summary>
+        /// True when the in-memory document has edits that aren't on disk yet.
+        /// </summary>
+        /// <remarks>
+        /// Every setter writes to the XDocument and nothing else, so a value typed on the Global page
+        /// is invisible to Roblox until Apply runs. That is not what the rest of the app does — every
+        /// other page saves as you change it — so people set a value, launch, and find it ignored.
+        /// Tracking it here rather than in the view model means every setter gets it for free and
+        /// none can be forgotten.
+        /// </remarks>
+        public static bool Dirty { get; private set; }
+
         public static bool Exists => File.Exists(FileLocation);
 
         /// <summary>
@@ -76,6 +88,7 @@ namespace BeastStrap.Utility
             try
             {
                 _document = XDocument.Load(FileLocation);
+                Dirty = false;
                 return true;
             }
             catch (Exception ex)
@@ -123,6 +136,7 @@ namespace BeastStrap.Utility
                         SetLocked(true);
                 }
 
+                Dirty = false;
                 App.Logger.WriteLine(LOG_IDENT, $"Saved settings to {FileLocation} (locked={wasLocked})");
                 return true;
             }
@@ -142,6 +156,9 @@ namespace BeastStrap.Utility
         {
             if (_document is null)
                 return;
+
+            // Edits live only in the XDocument until Save() runs — see Dirty.
+            Dirty = true;
 
             string text = value switch
             {

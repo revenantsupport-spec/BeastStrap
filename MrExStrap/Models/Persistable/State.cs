@@ -99,5 +99,22 @@ namespace BeastStrap.Models.Persistable
         // top. Zero = no main marked. Survives app restarts so the marker comes back when
         // the tab reopens.
         public int MainInstancePid { get; set; } = 0;
+
+        // ---- Community stats cache (Home dashboard) -----------------------------------
+        // Both figures come from PUBLIC data (release download counts on the update host and
+        // the Discord invite widget) — nothing about this user is transmitted or counted, so
+        // no opt-in is needed. Cached here with a timestamp so the Home page doesn't re-fetch
+        // on every open; refreshed when older than CommunityStatsMaxAgeMinutes.
+
+        public long CommunityTotalDownloads { get; set; } = 0;
+
+        public int CommunityDiscordOnline { get; set; } = 0;
+
+        public int CommunityDiscordMembers { get; set; } = 0;
+
+        public DateTime? CommunityStatsFetchedUtc { get; set; } = null;
+
+        // How long a cached community-stats figure stays trusted before a refresh attempt.
+        public static TimeSpan CommunityStatsMaxAge => TimeSpan.FromMinutes(30);
     }
 }

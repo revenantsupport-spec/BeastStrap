@@ -91,6 +91,30 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
+                <!-- Community tile — installs + Discord online, fetched from public data only -->
+                <Border Style="{StaticResource HomeTile}" Width="198" MinHeight="80">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <ui:SymbolIcon Symbol="PeopleTeam24" FontSize="15" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource BrandPurpleBrush}" />
+                            <TextBlock Text="COMMUNITY" Style="{StaticResource BrandSectionHeader}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding CommunityLine}" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrandCyanBrush}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="Total installer downloads across all releases. Fetched from public release data — nothing about you is counted or sent.">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CommunityLine}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
             </WrapPanel>
 
             <!-- Primary launch CTA — clean cyan->green gradient (glow removed, glassy look).

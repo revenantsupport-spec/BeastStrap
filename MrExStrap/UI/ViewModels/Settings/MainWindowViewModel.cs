@@ -77,11 +77,44 @@ namespace BeastStrap.UI.ViewModels.Settings
 
             App.PendingSettingTasks.Clear();
 
+            // The Global page edits ROBLOX's own settings file rather than ours, so it has its own
+            // Apply button further up the page. People press this one instead — it's the big one in
+            // the window footer and every other page is saved by it — and their change silently never
+            // reached disk. A user set their framerate cap to 69, pressed Save, launched, saw 240, and
+            // reasonably concluded the feature was broken. If that page has pending edits, flush them.
+            if (GlobalBasicSettings.Loaded && GlobalBasicSettings.Dirty)
+            {
+                if (GlobalBasicSettings.Save())
+                    App.Logger.WriteLine(LOG_IDENT, "Flushed pending Roblox settings changes from the Global page");
+                else
+                    Frontend.ShowMessageBox(
+                        "Couldn't save your changes to Roblox's own settings file. Everything else was saved. See the log for details.",
+                        MessageBoxImage.Error);
+            }
+
             RequestSaveNoticeEvent?.Invoke(this, EventArgs.Empty);
         }
 
         private void SaveAndLaunch()
         {
+            // Roblox rewrites its settings file when it STARTS, so unlocked Global-page changes are
+            // gone before the user even reaches the menu. Saving and launching would look like it
+            // worked and change nothing, so say so while they can still do something about it.
+            // Checked before SaveSettings, because that clears the dirty flag.
+            if (GlobalBasicSettings.Loaded && GlobalBasicSettings.Dirty && !GlobalBasicSettings.IsLocked)
+            {
+                var result = Frontend.ShowMessageBox(
+                    "Your Global page changes won't survive this launch.\n\n" +
+                    "Roblox rewrites its own settings file when it starts, so anything that isn't locked goes " +
+                    "straight back to what Roblox had. Turn on \"Lock the file\" on the Global page first if you " +
+                    "want them to stick.\n\n" +
+                    "Launch anyway?",
+                    MessageBoxImage.Warning, MessageBoxButton.YesNo, MessageBoxResult.No);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
             SaveSettings();
             RequestLaunchAndCloseEvent?.Invoke(this, EventArgs.Empty);
         }

@@ -23,6 +23,8 @@ namespace BeastStrap.UI.ViewModels
         private string _executorMatchText = "Checking latest…";
         private Brush _executorMatchBrush = MatchMutedBrush;
 
+        private string _communityLine = "Counting the community…";
+
         public string Version => $"v{App.Version}";
 
         public string ChannelStatus => "LIVE · locked";
@@ -55,6 +57,14 @@ namespace BeastStrap.UI.ViewModels
             }
         }
 
+        // e.g. "18,432 installs" — formatted with separators, refreshed in the background.
+        // Community figures come from public data only (see Utility.CommunityStats).
+        public string CommunityLine
+        {
+            get => _communityLine;
+            private set { _communityLine = value; OnPropertyChanged(nameof(CommunityLine)); }
+        }
+
         public HomeViewModel()
         {
             string activeId = App.Settings.Prop.ActiveVersionProfileId ?? "";
@@ -77,6 +87,7 @@ namespace BeastStrap.UI.ViewModels
             }
 
             _ = RefreshExecutorMatchAsync();
+            _ = LoadCommunityStatsAsync();
         }
 
         private async Task RefreshExecutorMatchAsync()
@@ -121,6 +132,21 @@ namespace BeastStrap.UI.ViewModels
                 App.Logger.WriteException("HomeViewModel::RefreshExecutorMatchAsync", ex);
                 ExecutorMatchText = "Could not check";
             }
+        }
+
+        private async Task LoadCommunityStatsAsync()
+        {
+            var stats = await BeastStrap.Utility.CommunityStats.GetAsync(TimeSpan.FromSeconds(6));
+
+            if (stats is null)
+            {
+                CommunityLine = "";
+                return;
+            }
+
+            CommunityLine = stats.TotalDownloads > 0
+                ? $"{stats.TotalDownloads:N0} installs"
+                : "";
         }
 
         private static string ShortenHash(string hash)
