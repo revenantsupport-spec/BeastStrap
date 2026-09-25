@@ -146,10 +146,13 @@ namespace BeastStrap.UI.ViewModels.Settings
             {
                 // Anything unparseable used to be dropped in silence, and because OnPropertyChanged
                 // then snapped the box back to the old number it looked like the field was refusing
-                // to change. Say what went wrong instead.
-                if (int.TryParse(value, out int fps) && fps >= 0)
+                // to change. Say what went wrong instead. Clearing the box resets to the engine
+                // default (shown as 60) rather than snapping the old value back.
+                if (string.IsNullOrWhiteSpace(value))
+                    GBS.SetValue(GBS.FramerateCap, -1);
+                else if (int.TryParse(value, out int fps) && fps >= 0)
                     GBS.SetValue(GBS.FramerateCap, fps < 1 ? -1 : fps);
-                else if (!string.IsNullOrWhiteSpace(value))
+                else
                     Frontend.ShowMessageBox(
                         $"\"{value}\" isn't a framerate. Enter a whole number, like 60 or 240 — or 0 to let Roblox decide.",
                         MessageBoxImage.Warning);
