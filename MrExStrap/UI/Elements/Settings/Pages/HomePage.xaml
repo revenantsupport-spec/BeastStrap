@@ -17,15 +17,105 @@
             <Image Source="pack://application:,,,/Resources/BeastStrap.png"
                    Width="380" HorizontalAlignment="Center"
                    RenderOptions.BitmapScalingMode="HighQuality"
-                   Effect="{DynamicResource BrandGlowSoft}" />
+                   Effect="{DynamicResource BrandGlowSoft}"
+                   Visibility="{DynamicResource BrandDefaultArtVisibility}" />
 
+            <!--
+                Creator theme hero (a YouTuber or a script site). Their banner is shown as-is (it already
+                carries their own name and art, so nothing is laid over it), with the "BeastStrap –" line,
+                their tagline and a link to their channel or site underneath.
+            -->
+            <StackPanel Visibility="{DynamicResource BrandCreatorArtVisibility}">
+                <Border Width="660" Height="152" CornerRadius="14" BorderThickness="1" BorderBrush="{DynamicResource GlassBorderBrush}"
+                        Effect="{StaticResource CardShadowEffect}">
+                    <Border.Background>
+                        <ImageBrush ImageSource="{DynamicResource CreatorBannerImage}" Stretch="UniformToFill"
+                                    RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border.Background>
+                </Border>
+                <Grid Margin="6,14,6,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Ellipse Grid.Column="0" Width="60" Height="60" StrokeThickness="3" Stroke="{DynamicResource BrandGradientBrush}"
+                             Effect="{DynamicResource BrandGlowSoft}">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="{DynamicResource CreatorAvatarImage}" Stretch="UniformToFill"
+                                        RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock FontSize="24" FontWeight="Bold">
+                            <Run Text="BeastStrap –" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <Run Text="{DynamicResource CreatorName}" Foreground="{DynamicResource BrandGradientBrush}" />
+                        </TextBlock>
+                        <TextBlock Text="{DynamicResource CreatorTagline}" FontSize="13" Margin="0,2,0,0"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="2" VerticalAlignment="Center" Visibility="{DynamicResource CreatorLinkVisibility}"
+                               Icon="{DynamicResource CreatorLinkIcon}" Content="{DynamicResource CreatorLinkText}"
+                               Command="{Binding DataContext.OpenWebpageCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                               CommandParameter="{DynamicResource CreatorUrl}" />
+                </Grid>
+            </StackPanel>
+
+            <!-- The standard look's strapline and divider. Hidden under a creator theme: the hero already has its
+                 own tagline, and the extra ~55 px pushed "Save and launch Roblox" below the fold. -->
             <TextBlock Text="The Private Roblox BeastStrap For the Gimpys."
                        HorizontalAlignment="Center" Margin="0,10,0,0" FontSize="14"
+                       Visibility="{DynamicResource BrandDefaultArtVisibility}"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
 
             <!-- Gradient divider -->
             <Border Height="3" Width="200" CornerRadius="2" Margin="0,18,0,0"
+                    Visibility="{DynamicResource BrandDefaultArtVisibility}"
                     Background="{DynamicResource BrandGradientBrush}" />
+
+            <!--
+                Unexplained-crash notice. Collapsed unless there is actually something to say.
+            -->
+            <Border Margin="0,18,0,0" Padding="14,12" CornerRadius="4"
+                    Visibility="{Binding CrashNoticeVisibility}"
+                    Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                    BorderBrush="{DynamicResource SystemFillColorCautionBrush}" BorderThickness="0,0,0,2">
+                <StackPanel>
+                    <TextBlock Text="{Binding CrashNoticeText}" TextWrapping="Wrap" FontSize="13" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <ui:Button Content="Export logs" Icon="ArrowDownload24" Appearance="Primary"
+                                   Command="{Binding ExportCrashLogsCommand}" />
+                        <ui:Button Content="Dismiss" Margin="8,0,0,0"
+                                   Command="{Binding DismissCrashNoticeCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!--
+                "New: themes": shown until it's dismissed or the Appearance tab has been opened.
+            -->
+            <Border Margin="0,18,0,0" Padding="14,10" CornerRadius="8" BorderThickness="1"
+                    Visibility="{Binding ThemesNoticeVisibility}"
+                    Background="{DynamicResource ChipCheckedBg}" BorderBrush="{DynamicResource BrandAccentEdgeBrush}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:SymbolIcon Grid.Column="0" Symbol="PaintBrush24" FontSize="20" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13">
+                        <Run Text="New: themes." FontWeight="SemiBold" />
+                        <Run Text="{Binding ThemesNoticeText, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </TextBlock>
+                    <ui:Button Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" Appearance="Primary"
+                               Icon="PaintBrush24" Content="Open Appearance" Click="OpenAppearance_Click" />
+                    <ui:Button Grid.Column="3" Margin="6,0,0,0" VerticalAlignment="Center" Icon="Dismiss24" ToolTip="Dismiss"
+                               Command="{Binding DismissThemesNoticeCommand}" />
+                </Grid>
+            </Border>
 
             <!-- Status tiles (glass, responsive: wrap on narrow widths) -->
             <WrapPanel HorizontalAlignment="Center" Margin="0,22,0,0">
@@ -125,6 +215,9 @@
                        Appearance="Primary" Icon="Play24" FontSize="16"
                        Content="Save and launch Roblox"
                        Click="SaveAndLaunchButton_Click" />
+
+            <!-- Rotating promo -->
+            <controls:PromoBanner Margin="6,18,6,0" />
 
             <TextBlock HorizontalAlignment="Center" Margin="0,14,0,0" FontSize="12"
                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"

@@ -13,10 +13,10 @@ namespace BeastStrap
             "Cookie", "Set-Cookie", "X-CSRF-TOKEN", "rbx-authentication-ticket",
             "Authorization", "RBXAuthenticationNegotiation",
 
-            // The TOOLS tabs send the user's own paid API keys through this same handler —
-            // BypassToolsClient adds "x-api-key", LuaObfuscatorClient adds "apikey" and
-            // "sessionId". Without these names here, turning on debug mode wrote a user's key
-            // into the log, and the log goes into the diagnostic zip they hand to us.
+            // The TOOLS tab sends the user's own API keys through this same handler —
+            // BypassToolsClient adds "x-api-key". Without these names here, turning on
+            // debug mode wrote a user's key into the log, and the log goes into the
+            // diagnostic zip they hand to us.
             "apikey", "api-key", "x-api-key", "sessionId"
         };
 

@@ -1,4 +1,4 @@
-namespace BeastStrap.Utility
+﻿namespace BeastStrap.Utility
 {
     // Works out why a Roblox client just died and, crucially, whether WE did it. All the actual
     // deciding lives in CrashRules (which is kept free of file I/O so it can be run against a
@@ -43,7 +43,7 @@ namespace BeastStrap.Utility
         /// known (the watcher has it) so the self-check only considers what BeastStrap was doing
         /// while that client was actually alive.
         /// </summary>
-        public static CrashVerdict Analyze(DateTime? clientStartUtc = null, DateTime? clientEndUtc = null)
+        public static CrashVerdict Analyze(DateTime? clientStartUtc = null, DateTime? clientEndUtc = null, string? clientLogPath = null)
         {
             try
             {
@@ -51,14 +51,14 @@ namespace BeastStrap.Utility
                 DateTime start = (clientStartUtc ?? (end - DefaultLookback)) - WindowSlack;
 
                 var ourSessions = ReadOurSessions(start, end);
-                var robloxLogs = ReadRobloxLogs(start);
+                var robloxLogs = ReadRobloxLogs(start, end, clientLogPath);
 
                 var verdict = CrashRules.Evaluate(ourSessions, robloxLogs);
 
                 App.Logger.WriteLine(LOG_IDENT,
                     $"Verdict: {verdict.Fault} via '{verdict.RuleId}' " +
                     $"(window {start:HH:mm:ss}-{end:HH:mm:ss}Z, {ourSessions.Count} BeastStrap session(s), " +
-                    $"{robloxLogs.Count} Roblox log(s), self-check {(verdict.SelfCleared ? "clean" : "not clearing us")})");
+                    $"{robloxLogs.Count} Roblox log(s){(string.IsNullOrEmpty(clientLogPath) ? "" : ", scoped to the watched client")})");
 
                 return verdict;
             }
@@ -66,8 +66,8 @@ namespace BeastStrap.Utility
             {
                 App.Logger.WriteException(LOG_IDENT, ex);
 
-                // We failed to look, so we must not imply we did.
-                return CrashVerdict.Inconclusive(false);
+                // We failed to look, so we have no verdict. The caller shows nothing for Unknown.
+                return CrashVerdict.Inconclusive();
             }
         }
 
@@ -150,12 +150,38 @@ namespace BeastStrap.Utility
 
         #region Roblox's client logs
 
-        // Roblox writes one log per launch to %LocalAppData%\Roblox\logs. Only consider logs
-        // touched since the window opened, newest first. Share read+write because Roblox may
-        // still hold the newest one open.
-        private static IReadOnlyList<string> ReadRobloxLogs(DateTime since, int max = 3)
+        // Roblox writes one log per launch to %LocalAppData%\Roblox\logs.
+        //
+        // Two things matter here and neither used to happen:
+        //
+        //   1. When we know WHICH client died (the watcher does — it has been tailing that exact
+        //      file), read only that one. Scanning "the 3 most recently modified logs" meant a
+        //      healthy client running alongside the dead one could hand us the verdict for a crash
+        //      it had nothing to do with.
+        //   2. Narrow to the crash window, exactly as we do for our own logs. Handing the rules a
+        //      whole 1 MB tail let a line from the opening minutes of a long session explain a
+        //      death hours later.
+        private static IReadOnlyList<string> ReadRobloxLogs(DateTime start, DateTime end, string? clientLogPath, int max = 3)
         {
             var logs = new List<string>();
+
+            // The client we were actually watching. Nothing else can be more relevant.
+            if (!string.IsNullOrEmpty(clientLogPath) && File.Exists(clientLogPath))
+            {
+                try
+                {
+                    string narrowed = CrashRules.NarrowToWindow(ReadTail(clientLogPath, MaxReadBytes), start, end);
+                    if (!string.IsNullOrEmpty(narrowed))
+                        logs.Add(narrowed);
+
+                    return logs;
+                }
+                catch (Exception ex)
+                {
+                    // Fall through to the scan below rather than losing the evidence entirely.
+                    App.Logger.WriteException(LOG_IDENT + "::ReadClientLog", ex);
+                }
+            }
 
             string logDir;
             try { logDir = Path.Combine(Paths.LocalAppData, "Roblox", "logs"); }
@@ -168,7 +194,7 @@ namespace BeastStrap.Utility
             try
             {
                 files = new DirectoryInfo(logDir).GetFiles("*.log")
-                    .Where(f => f.LastWriteTimeUtc >= since)
+                    .Where(f => f.LastWriteTimeUtc >= start)
                     .OrderByDescending(f => f.LastWriteTimeUtc)
                     .Take(max)
                     .ToArray();
@@ -181,7 +207,12 @@ namespace BeastStrap.Utility
 
             foreach (var file in files)
             {
-                try { logs.Add(ReadTail(file.FullName, MaxReadBytes)); }
+                try
+                {
+                    string narrowed = CrashRules.NarrowToWindow(ReadTail(file.FullName, MaxReadBytes), start, end);
+                    if (!string.IsNullOrEmpty(narrowed))
+                        logs.Add(narrowed);
+                }
                 catch { continue; }
             }
 

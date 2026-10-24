@@ -364,7 +364,21 @@ namespace BeastStrap
             if (probableCrash)
             {
                 App.Logger.WriteLine(LOG_IDENT,
-                    $"Roblox exited after {sessionLength.TotalSeconds:F0}s without reaching in-game — probable crash");
+                    $"Roblox exited after {sessionLength.TotalSeconds:F0}s without reaching in-game - probable crash");
+
+                // Run the analyzer HERE rather than letting the dialog do it, because the crash has
+                // to be recorded whether or not a dialog is ever shown. The silent case (no rule
+                // matched) is the one we most need a record of - it is the population we know least
+                // about, and it is exactly the one the user never sees a prompt for.
+                var verdict = BeastStrap.Utility.CrashVerdict.Inconclusive();
+                try
+                {
+                    verdict = BeastStrap.Utility.CrashAnalyzer.Analyze(sessionStartUtc, sessionEndUtc, _watcherData.LogFile);
+                }
+                catch (Exception ex) { App.Logger.WriteException(LOG_IDENT + "::Analyze", ex); }
+
+                try { RecordCrash(verdict, exitCode, sessionLength); }
+                catch (Exception ex) { App.Logger.WriteException(LOG_IDENT + "::RecordCrash", ex); }
 
                 // Users who Alt+F4 out of the home screen hit this constantly as a false positive,
                 // so the dialog is opt-in (Settings -> Integrations -> Crash notifications).
@@ -378,9 +392,9 @@ namespace BeastStrap
                 {
                     // Blocks (self-marshals to the UI dispatcher) until the user dismisses it, which
                     // also holds off the watcher's teardown/terminate until they're done exporting.
-                    // The lifetime is passed through so the analyzer only weighs what BeastStrap was
-                    // doing while this client was actually alive.
-                    UI.Frontend.ShowPlayerErrorDialog(crash: true, clientStartUtc: sessionStartUtc, clientEndUtc: sessionEndUtc);
+                    // Shows nothing at all when the verdict is Unknown - see Frontend.
+                    UI.Frontend.ShowPlayerErrorDialog(crash: true, clientStartUtc: sessionStartUtc, clientEndUtc: sessionEndUtc,
+                        clientLogPath: _watcherData.LogFile, verdict: verdict);
                 }
                 catch (Exception ex)
                 {
@@ -388,6 +402,54 @@ namespace BeastStrap
                     App.Logger.WriteException(LOG_IDENT, ex);
                 }
             }
+        }
+
+        /// <summary>
+        /// Preserves this crash's logs and notes it in the local journal so the settings page can
+        /// offer an export later. Entirely local - nothing is transmitted.
+        /// </summary>
+        private void RecordCrash(BeastStrap.Utility.CrashVerdict verdict, int? exitCode, TimeSpan sessionLength)
+        {
+            const string LOG_IDENT = "Watcher::RecordCrash";
+
+            string preserved = BeastStrap.Utility.CrashEvidence.Preserve(_watcherData?.LogFile);
+
+            // Roblox stamps its build into the log file name, e.g.
+            // "0.735.0.7351131_20260819T221243Z_Player_0C153_last.log".
+            string robloxVersion = "";
+            try
+            {
+                string? name = Path.GetFileName(_watcherData?.LogFile);
+                if (!string.IsNullOrEmpty(name))
+                {
+                    int cut = name.IndexOf('_');
+                    if (cut > 0)
+                        robloxVersion = name[..cut];
+                }
+            }
+            catch { /* best effort, the record is still useful without it */ }
+
+            var record = new BeastStrap.Models.Persistable.CrashRecord
+            {
+                TimeUtc = DateTime.UtcNow,
+                AppVersion = App.Version,
+                RobloxVersion = robloxVersion,
+                RuleId = verdict.RuleId,
+                // Frontend shows nothing when the verdict is Unknown, so that is exactly the set the
+                // notice needs to surface later. A named cause got a dialog and needs no follow-up.
+                Silent = verdict.Fault == BeastStrap.Utility.CrashFault.Unknown,
+                // 0 means a clean exit and never reaches here, so it would only ever be noise.
+                ExitCode = exitCode is 0 ? null : exitCode,
+                SessionSeconds = (int)sessionLength.TotalSeconds,
+                PreservedFolder = preserved,
+            };
+
+            // SaveMerged, NOT Save. This is a background process and a whole-object write would
+            // clobber whatever another process has changed since we loaded the journal.
+            App.CrashJournal.SaveMerged(journal => journal.PushCrash(record));
+
+            App.Logger.WriteLine(LOG_IDENT,
+                $"Recorded crash locally (rule '{record.RuleId}', {record.SessionSeconds}s). Nothing was sent anywhere.");
         }
 
         // Is the client we're watching still alive? Uses the held handle when we have one and only

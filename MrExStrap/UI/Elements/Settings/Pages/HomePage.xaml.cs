@@ -7,10 +7,24 @@ namespace BeastStrap.UI.Elements.Settings.Pages
 {
     public partial class HomePage
     {
+        private readonly HomeViewModel _viewModel;
+
         public HomePage()
         {
-            DataContext = new HomeViewModel();
+            _viewModel = new HomeViewModel();
+            DataContext = _viewModel;
             InitializeComponent();
+
+            // Pages are cached for the window's lifetime. The "New: themes" callout hides once Appearance has been
+            // opened, and its text follows a seasonal theme starting or ending, so catch up whenever Home is shown and
+            // follow the theme while it's on screen.
+            Loaded += (_, _) =>
+            {
+                BeastStrap.Utility.ThemeManager.ThemeStateChanged -= _viewModel.RefreshThemesNotice;
+                BeastStrap.Utility.ThemeManager.ThemeStateChanged += _viewModel.RefreshThemesNotice;
+                _viewModel.RefreshThemesNotice();
+            };
+            Unloaded += (_, _) => BeastStrap.Utility.ThemeManager.ThemeStateChanged -= _viewModel.RefreshThemesNotice;
         }
 
         // The dashboard's "Save and launch Roblox" CTA. Reuses the settings window's
@@ -42,6 +56,13 @@ namespace BeastStrap.UI.Elements.Settings.Pages
                 Owner = System.Windows.Application.Current?.MainWindow
             };
             dialog.ShowDialog();
+        }
+
+        // The callout's link: straight to the Appearance tab, which also marks the callout as seen.
+        private void OpenAppearance_Click(object sender, RoutedEventArgs e)
+        {
+            if (Window.GetWindow(this) is MainWindow window)
+                window.Navigate(typeof(AppearancePage));
         }
     }
 }

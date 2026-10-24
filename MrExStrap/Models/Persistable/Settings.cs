@@ -27,6 +27,18 @@ namespace BeastStrap.Models.Persistable
         // and a custom app icon. Applied by Utility.ThemeManager.
         public ThemePalette Palette { get; set; } = new();
         public string SelectedThemePreset { get; set; } = "Default";
+
+        // Id of the active creator theme (Models.CreatorTheme), or "" for the standard BeastStrap look.
+        // Separate from the palette on purpose: tweaking a colour afterwards keeps the creator's art.
+        public string ActiveCreatorTheme { get; set; } = "";
+
+        // Seasonal creator themes (420, Halloween, Christmas) take over by themselves on their days
+        // (ThemeManager.ActiveSeasonal), without touching ActiveCreatorTheme/Palette, so the user's own theme is
+        // simply back afterwards. By theme id: the ones whose yearly switch is off (missing means on, so a seasonal
+        // theme added later starts on), and the year whose run each was turned off for (from the Appearance notice,
+        // or by picking any theme during the run), so it stays off until next year.
+        public List<string> SeasonalThemesOff { get; set; } = new();
+        public Dictionary<string, int> SeasonalThemesSkipped { get; set; } = new();
         public bool EnableAurora { get; set; } = true;
         public bool EnableGlass { get; set; } = true;
         public bool EnableGlow { get; set; } = true;
@@ -240,15 +252,11 @@ namespace BeastStrap.Models.Persistable
         // current spoofed one, and cleared on revert.
         public Dictionary<string, string> BanAsyncOriginalMacByGuid { get; set; } = new();
 
-        // luaobfuscator.com obfuscation is opt-in and needs the user's own API key. Stored here (local
-        // settings only — never shipped in the repo/binary); blank means the LuaObfuscator engine is off.
-        public string LuaObfuscatorApiKey { get; set; } = "";
-
         // bypass.tools link-bypasser API key — the user's own, local settings only (never shipped). Blank
         // means the Link Bypasser is off; users get a key by signing up via the referral link in the tab.
         public string BypassToolsApiKey { get; set; } = "";
 
-        // Simple mode — hides advanced TOOLS (Obfuscator/Deobfuscator/Link Bypasser) to keep nav clean.
+        // Simple mode — hides the advanced TOOLS (Link Bypasser) to keep nav clean.
         public bool SimpleMode { get; set; } = false;
     }
 }

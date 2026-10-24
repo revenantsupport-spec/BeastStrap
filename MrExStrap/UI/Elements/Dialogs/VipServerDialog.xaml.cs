@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using Microsoft.Web.WebView2.Core;
 
 using BeastStrap.Utility;
@@ -54,6 +54,39 @@ namespace BeastStrap.UI.Elements.Dialogs
                 WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
                 _navigationHooked = true;
 
+                // Ask the index how many servers this place actually has BEFORE loading the embed.
+                //
+                // rbxservers answers a place it has never indexed with its own styled
+                // "400 Bad Request — The place you are trying to view is not valid or has never been
+                // visited before" page, served as HTTP 200. Most games are not in the index, so that
+                // was the common case, and rendering their error page inside our launcher reads as
+                // BeastStrap being broken when the real answer is just "nobody has shared a server
+                // for this game".
+                StatusOverlay.Text = "Looking for VIP servers for this game…";
+
+                int count = await RbxServersClient.ServerCountForPlaceAsync(_placeId);
+
+                if (_closed)
+                    return;
+
+                if (count == 0)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"rbxservers lists no servers for place {_placeId}; skipping the picker.");
+                    StatusOverlay.Text = "No shared VIP servers are listed for this game. Launching normally.";
+
+                    await Task.Delay(1800);
+
+                    if (!_closed)
+                        Close();
+
+                    return;
+                }
+
+                // -1 means we couldn't reach the site. Fall through and let the embed try anyway —
+                // our own fetch failing is not proof the WebView's will.
+                if (count > 0)
+                    HeaderText.Text = $"Pick one of {count} free VIP servers for place #{_placeId}, or skip to launch normally.";
+
                 StatusOverlay.Visibility = Visibility.Collapsed;
 
                 string url = $"https://rbxservers.xyz/embedded/game/{_placeId}";
@@ -91,17 +124,28 @@ namespace BeastStrap.UI.Elements.Dialogs
         {
             string uri = e.Uri ?? "";
 
-            // Fast path: clicking a server in the embed navigates to /embedded/quicklaunch/{GUID},
-            // which is rbxservers' click-tracking interstitial with a 7-second countdown. The GUID
-            // in that URL IS the accessCode, so we capture it on click and bail out — no countdown,
-            // no roblox.com bounce, instant launch.
+            // ⚠️ We used to short-circuit here: clicking a server navigates to
+            // /embedded/quicklaunch/{GUID}, and the old code assumed that GUID WAS the Roblox
+            // accessCode, so it cancelled the navigation and used it directly — skipping the
+            // interstitial's countdown entirely.
+            //
+            // That assumption no longer holds after rbxservers' redesign. In the page payload the
+            // GUID is "server_uuid", their own record id, sitting alongside "comment_token",
+            // "voting_token" and a "robot_challenge" blob — and NO access code appears anywhere in
+            // the markup. The real Roblox URL is built in JavaScript once the countdown finishes and
+            // the challenge is satisfied.
+            //
+            // So we now let the interstitial run and capture the code from the Roblox navigation it
+            // produces, below. That costs the user the countdown, but it uses the code rbxservers
+            // actually issues instead of an id that only used to look like one — and it keeps
+            // working whatever they change the id scheme to next.
             string? quickCode = LaunchArgsUtility.TryExtractRbxServersQuickLaunchCode(uri);
             if (quickCode is not null)
             {
-                e.Cancel = true;
-                App.Logger.WriteLine(LOG_IDENT, $"Captured accessCode from quicklaunch URL (skipped countdown).");
-                PickedAccessCode = quickCode;
-                Dispatcher.BeginInvoke(new Action(Close));
+                // Deliberately NOT covering the WebView with the status overlay here: the
+                // interstitial carries a robot challenge, and hiding it would leave the user unable
+                // to satisfy anything it decides to ask them for.
+                App.Logger.WriteLine(LOG_IDENT, "Server picked; letting the quicklaunch interstitial resolve the real access code.");
                 return;
             }
 

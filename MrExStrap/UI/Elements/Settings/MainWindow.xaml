@@ -72,7 +72,7 @@
 
             <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,0,12,8" VerticalAlignment="Center">
                 <TextBlock Text="Simple mode" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" ToolTip="Hide advanced tools to keep nav clean"/>
-                <ui:ToggleSwitch IsChecked="{Binding SimpleMode, Mode=TwoWay}" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="Hide Obfuscator / Deobfuscator / Link Bypasser"/>
+                <ui:ToggleSwitch IsChecked="{Binding SimpleMode, Mode=TwoWay}" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="Hide Link Bypasser"/>
                 <TextBlock Text="hide tools" FontSize="10" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Opacity="0.6" VerticalAlignment="Center" Margin="6,0,0,0"/>
             </StackPanel>
 
@@ -107,8 +107,6 @@
                     <ui:NavigationItem Content="{x:Static resources:Strings.Menu_Appearance_Title}" PageType="{x:Type pages:AppearancePage}" Icon="PaintBrush24" Tag="appearance" />
 
                     <ui:NavigationHeader Text="TOOLS" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <ui:NavigationItem Content="Obfuscator" PageType="{x:Type pages:ObfuscatorPage}" Icon="LockClosed24" Tag="obfuscator" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <ui:NavigationItem Content="Deobfuscator" PageType="{x:Type pages:DeobfuscatorPage}" Icon="LockOpen24" Tag="deobfuscator" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <ui:NavigationItem Content="Link Bypasser" PageType="{x:Type pages:LinkBypasserPage}" Icon="Link24" Tag="linkbypasser" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </ui:NavigationFluent.Items>
                 <ui:NavigationFluent.Footer>

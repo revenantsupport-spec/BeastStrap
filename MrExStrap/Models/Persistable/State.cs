@@ -47,6 +47,51 @@ namespace BeastStrap.Models.Persistable
                 RecentPlaces.RemoveAt(RecentPlaces.Count - 1);
         }
 
+        // Scripts starred on the Scripts page, newest first.
+        //
+        // Note: These live in State, NOT Settings, on purpose. MainWindow compares
+        // Settings.ComputeCurrentHash() against a baseline to decide whether to prompt "you have
+        // unsaved changes" on close — so a favourites list in Settings.json would make every star
+        // trigger that prompt. State is not hashed.
+        //
+        // Capped generously rather than tightly: this is a keep-list, not a recency list, and 200
+        // entries is only a few tens of KB.
+        public List<FavouriteScript> FavouriteScripts { get; set; } = new();
+
+        // The Home page's "New: themes" callout, which points at the Appearance tab. Set once it's dismissed or
+        // Appearance has been opened, so it says its piece once. In State, not Settings, for the same reason as
+        // FavouriteScripts: a Settings change would make closing the window ask about unsaved changes.
+        public bool ThemesNoticeSeen { get; set; } = false;
+
+        /// <summary>Stars or unstars a script. Returns true if it is now starred.</summary>
+        public bool ToggleFavouriteScript(FavouriteScript script)
+        {
+            if (script is null || string.IsNullOrWhiteSpace(script.Slug))
+                return false;
+
+            int removed = FavouriteScripts.RemoveAll(
+                f => string.Equals(f.Slug, script.Slug, StringComparison.OrdinalIgnoreCase));
+
+            if (removed > 0)
+                return false;
+
+            script.StarredUtc = DateTime.UtcNow;
+            FavouriteScripts.Insert(0, script);
+
+            while (FavouriteScripts.Count > 200)
+                FavouriteScripts.RemoveAt(FavouriteScripts.Count - 1);
+
+            return true;
+        }
+
+        public bool IsScriptFavourited(string slug) =>
+            !string.IsNullOrWhiteSpace(slug)
+            && FavouriteScripts.Any(f => string.Equals(f.Slug, slug, StringComparison.OrdinalIgnoreCase));
+
+        // Note: The crash journal deliberately does NOT live here — see CrashJournal.cs. The settings UI
+        // whole-writes State, which would erase records a watcher process wrote while the settings
+        // window happened to be open.
+
         // LIVE version the user has already seen. Used to detect when Roblox
         // has shipped a new build since the last open so we can show a banner.
         public string DismissedLiveHash { get; set; } = "";

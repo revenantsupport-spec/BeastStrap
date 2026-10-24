@@ -15,6 +15,8 @@ namespace BeastStrap
         /// </summary>
         public string? LastFileHash { get; private set; }
 
+    public event Action? Saved;
+
         public bool Loaded { get; protected set; } = false;
 
         /// <summary>
@@ -233,6 +235,8 @@ namespace BeastStrap
                 // WriteAllText and Move. Self-healing, so no separate startup sweep is needed —
                 // orphans can't outlive the next successful save.
                 SweepOrphanedTempFiles();
+
+                try { Saved?.Invoke(); } catch { }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WaitHandleCannotBeOpenedException)
             {

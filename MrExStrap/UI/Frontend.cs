@@ -2,6 +2,7 @@ using System.Windows;
 
 using BeastStrap.UI.Elements.Bootstrapper;
 using BeastStrap.UI.Elements.Dialogs;
+using BeastStrap.Utility;
 
 namespace BeastStrap.UI
 {
@@ -28,69 +29,66 @@ namespace BeastStrap.UI
         // dialog led with a verdict it had never checked. A user's 2026-07-27 bundle has us
         // deleting the Roblox folder out from under their running client and then telling them to
         // turn off their NVIDIA overlay. Now nothing is written until we know who to blame.
-        public static void ShowPlayerErrorDialog(bool crash = false, DateTime? clientStartUtc = null, DateTime? clientEndUtc = null)
+        public static void ShowPlayerErrorDialog(bool crash = false, DateTime? clientStartUtc = null, DateTime? clientEndUtc = null, string? clientLogPath = null, CrashVerdict? verdict = null)
         {
+            const string LOG_IDENT = "Frontend::ShowPlayerErrorDialog";
+
             if (App.LaunchSettings.QuietFlag.Active)
                 return;
 
-            var verdict = BeastStrap.Utility.CrashAnalyzer.Analyze(clientStartUtc, clientEndUtc);
+            // The watcher already runs the analyzer so it can record the crash locally, so it hands
+            // the verdict in rather than making us analyze the same logs twice.
+            //
+            // clientLogPath scopes the third-party rules to the log of the client that actually
+            // died, instead of whichever Roblox logs happen to be recent.
+            verdict ??= CrashAnalyzer.Analyze(clientStartUtc, clientEndUtc, clientLogPath);
+
+            // No verdict on a crash means we genuinely do not know why the client died. Say nothing.
+            // The failed-launch path is different: "Roblox never started" is itself a known, useful
+            // fact, so that one still gets a dialog.
+            if (crash && verdict.Fault == CrashFault.Unknown)
+            {
+                App.Logger.WriteLine(LOG_IDENT,
+                    "Roblox exited abnormally but no rule identified a cause. Staying quiet rather than guessing.");
+                return;
+            }
 
             var info = new StringBuilder();
 
             if (verdict.Fault == CrashFault.Ours)
             {
-                // Own it. No Roblox-side framing, and no pointing at the user's executor or their
-                // drivers for something we did.
-                info.Append(crash
-                    ? "Roblox closed unexpectedly — and it looks like BeastStrap caused it."
-                    : "Roblox failed to launch — and it looks like BeastStrap caused it.");
+                // Only claim we closed it when the rule actually establishes that. Some ours/* rules
+                // prove we were doing something risky near this client, not that we killed it, and a
+                // flat "BeastStrap closed Roblox" over that evidence is the same overreach in the
+                // opposite direction to the third-party guesses this rewrite removed.
+                if (verdict.Certain)
+                    info.Append(crash
+                        ? "Roblox was closed by BeastStrap."
+                        : "Roblox failed to launch because of BeastStrap.");
+                else
+                    info.Append(crash
+                        ? "Roblox closed unexpectedly, and BeastStrap may have caused it."
+                        : "Roblox failed to launch, and BeastStrap may have caused it.");
+
                 info.Append("\n\n" + verdict.Message);
-                info.Append("\n\nSorry about that. Sending us your logs still helps — it tells us how often "
-                    + "this is happening in the wild.");
+            }
+            else if (crash)
+            {
+                info.Append("Roblox closed unexpectedly.");
+                info.Append("\n\n" + verdict.Message);
             }
             else
             {
-                if (crash)
-                    info.Append("Roblox closed unexpectedly — it looks like the game crashed.");
-                else
-                    info.Append(String.Format(Strings.Dialog_PlayerError_FailedLaunch, App.ProjectSupportLink));
+                info.Append(String.Format(Strings.Dialog_PlayerError_FailedLaunch, App.ProjectSupportLink));
 
                 if (verdict.Fault == CrashFault.Theirs)
                     info.Append("\n\n" + verdict.Message);
-
-                // Only say it wasn't us when we actually went and looked. If we couldn't read our
-                // own logs we have no business claiming anything.
-                if (verdict.SelfCleared)
-                {
-                    info.Append("\n\nWe checked BeastStrap's own logs for this launch and found nothing "
-                        + "wrong on our end, so this one looks like it really is outside BeastStrap.");
-                }
-                else
-                {
-                    info.Append("\n\nWe couldn't read BeastStrap's own logs for this launch, so we can't "
-                        + "rule BeastStrap out either. Send us your logs and we'll check properly.");
-                }
-
-                // If they're on an executor profile, that's a strong candidate: injected / external
-                // tools crash the Roblox client constantly. Point them at the clean profile so they
-                // can tell an executor problem from a real Roblox problem. Deliberately skipped when
-                // the fault is ours — blaming their executor for our bug is exactly the failure this
-                // rewrite exists to stop.
-                string? executor = App.GetActiveExecutorTitle();
-                if (!string.IsNullOrEmpty(executor))
-                {
-                    info.Append($"\n\nYou're launching with the **{executor}** executor. Crashes like this are very "
-                        + "often caused by the executor or other external/injection tools, not by Roblox or "
-                        + "BeastStrap. Try switching to the **Latest LIVE** profile in the Versions Manager and "
-                        + "launching clean — if it stops crashing, the executor was the cause.");
-                }
             }
 
-            // Offer the same one-click log export the crash dialog has. FluentMessageBox renders
-            // markdown, so the email / Discord links below are clickable.
-            info.Append("\n\nWant us to take a look? Export your logs and send them over — "
-                + $"email [{App.ProjectSupportEmail}](mailto:{App.ProjectSupportEmail}) "
-                + $"or join our [Discord]({App.ProjectDiscordLink}).\n\nExport your logs now?");
+            // Shared wording, so the support address lives in exactly one place. This dialog asks a
+            // Yes/No question, so it uses the prompt variant rather than the one that tells the user
+            // to click an Export button that only exists on the other error dialogs.
+            info.Append("\n\n" + SupportActions.ExportPromptMarkdown);
 
             var result = ShowMessageBox(info.ToString(), MessageBoxImage.Error, MessageBoxButton.YesNo, MessageBoxResult.Yes);
 

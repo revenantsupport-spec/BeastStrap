@@ -88,6 +88,11 @@ namespace BeastStrap
 
         public static readonly JsonManager<State> State = new();
 
+        // Crash journal. Separate file ("CrashJournal.json") because only background processes write
+        // it — keeping it in State meant the settings window's whole-object save erased crash records
+        // a watcher had recorded while the window was open. See CrashJournal.cs.
+        public static readonly JsonManager<CrashJournal> CrashJournal = new();
+
         // Multi Instance tab account store. Separate file ("Accounts.json") so DPAPI-encrypted
         // cookies stay out of Settings.json and out of the diagnostic crash-export bundle.
         public static readonly JsonManager<AccountsData> Accounts = new("Accounts");
@@ -257,6 +262,8 @@ namespace BeastStrap
                     Logger.WriteException("App::UnhandledException", ex);
                 else
                     Logger.WriteLine("App::UnhandledException", $"Non-Exception thrown: {e.ExceptionObject}");
+
+                RecordSilentFailure("unhandled-exception");
             };
 
             TaskScheduler.UnobservedTaskException += (_, e) =>
@@ -265,7 +272,49 @@ namespace BeastStrap
                 // report this. Log it and mark it observed so it doesn't also trip the finalizer.
                 Logger.WriteException("App::UnobservedTaskException", e.Exception);
                 e.SetObserved();
+
+                RecordSilentFailure("unobserved-task");
             };
+        }
+
+        /// <summary>
+        /// Notes a failure that produces no dialog, so the settings page can mention it later.
+        /// </summary>
+        /// <remarks>
+        /// Both handlers above are log-only by design — a background thread is the wrong place to
+        /// throw a modal at somebody, and under -quiet (which the background updater force-sets)
+        /// nothing would show anyway. The consequence was that this whole class of failure was
+        /// invisible unless someone happened to read their own log file. Recording it locally makes
+        /// it visible without interrupting anyone.
+        ///
+        /// Local only, and best-effort: this runs while the process is often already dying, so every
+        /// failure here is swallowed. Never let bookkeeping make a crash worse.
+        /// </remarks>
+        private static void RecordSilentFailure(string ruleId)
+        {
+            try
+            {
+                // Can fire before the journal is loaded, or in a process that never loads it.
+                if (!CrashJournal.Loaded || CrashJournal.LoadFailed)
+                    return;
+
+                // Copy the evidence BEFORE taking the cross-process file lock — this can run on the
+                // finalizer thread, and holding that lock across a directory copy blocks every other
+                // process trying to write the journal.
+                string preserved = Utility.CrashEvidence.Preserve(null);
+
+                // Its own list: these are OUR failures, not Roblox crashes. Sharing one capped list
+                // let a process with a recurring faulted task evict the user's real crash records.
+                // alertFailure: false — a finalizer thread must never block on a modal.
+                CrashJournal.SaveMerged(journal => journal.PushBackgroundFailure(new Models.Persistable.CrashRecord
+                {
+                    TimeUtc = DateTime.UtcNow,
+                    AppVersion = Version,
+                    RuleId = ruleId,
+                    PreservedFolder = preserved,
+                }));
+            }
+            catch { /* the process is on its way out; do not make it worse */ }
         }
 
         public static void FinalizeExceptionHandling(AggregateException ex)
@@ -727,6 +776,7 @@ namespace BeastStrap
                 Utility.ThemeManager.ApplyFromSettings();
 
                 State.Load();
+                CrashJournal.Load();
                 Accounts.Load();
 
                 // Versions Manager (v420.19+) migration. Run after Settings is loaded.

@@ -44,6 +44,20 @@
             <converters:FlagTagConverter x:Key="FlagTagConverter" />
             <converters:FlagKnownConverter x:Key="FlagKnownConverter" />
             <converters:OpacityPercentConverter x:Key="OpacityPercentConverter" />
+            <converters:StringEqualsConverter x:Key="Eq" />
+
+            <!--
+                Bool -> Visibility, declared here so pages stop each carrying their own copy — it used
+                to be redeclared in 16 separate page and dialog files.
+
+                Two keys for one stateless converter is deliberate. The pages had settled on two
+                different names (33 usages of "BooleanToVisibilityConverter", 13 of "BoolToVis"), and
+                unifying them would mean editing 46 call sites where a single missed one fails at
+                RUNTIME as an unresolved StaticResource rather than at build. Both names resolving to
+                the same instance costs nothing and removes the duplication without that risk.
+            -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

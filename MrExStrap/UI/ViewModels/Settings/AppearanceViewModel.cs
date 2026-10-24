@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,20 +8,18 @@ using ICSharpCode.SharpZipLib.Zip;
 
 using Microsoft.Win32;
 
-using Wpf.Ui.Common.Interfaces;
-
 using BeastStrap.UI.Elements.Settings;
 using BeastStrap.UI.Elements.Editor;
 using BeastStrap.UI.Elements.Dialogs;
 
 namespace BeastStrap.UI.ViewModels.Settings
 {
-    public class AppearanceViewModel : NotifyPropertyChangedViewModel, INavigationAware
+    public class AppearanceViewModel : NotifyPropertyChangedViewModel
     {
         private readonly Page _page;
 
         public ICommand PreviewBootstrapperCommand => new RelayCommand(PreviewBootstrapper);
-        public ICommand BrowseCustomRobloxIconLocationCommand => new RelayCommand(BrowseCustomRobloxIconLocation);
+        public ICommand BrowseCustomIconLocationCommand => new RelayCommand(BrowseCustomIconLocation);
 
         public ICommand AddCustomThemeCommand => new RelayCommand(AddCustomTheme);
         public ICommand DeleteCustomThemeCommand => new RelayCommand(DeleteCustomTheme);
@@ -42,7 +40,7 @@ namespace BeastStrap.UI.ViewModels.Settings
             dialog.ShowBootstrapper();
         }
 
-        private void BrowseCustomRobloxIconLocation()
+        private void BrowseCustomIconLocation()
         {
             var dialog = new OpenFileDialog
             {
@@ -52,25 +50,16 @@ namespace BeastStrap.UI.ViewModels.Settings
             if (dialog.ShowDialog() != true)
                 return;
 
-            CustomRobloxIconLocation = dialog.FileName;
-            OnPropertyChanged(nameof(CustomRobloxIconLocation));
+            CustomIconLocation = dialog.FileName;
+            OnPropertyChanged(nameof(CustomIconLocation));
         }
-
-        // v420.46: the Roblox window options (icon / title) only apply while window
-        // manipulation is enabled on the Integrations page, so the gating has to be
-        // refreshed whenever the user navigates here. See INavigationAware.
-        public bool WindowManipulationEnabled => App.Settings.Prop.EnableWindowManipulation;
-
-        public void OnNavigatedTo() => OnPropertyChanged(nameof(WindowManipulationEnabled));
-
-        public void OnNavigatedFrom() { }
 
         public AppearanceViewModel(Page page)
         {
             _page = page;
 
-            foreach (var entry in RobloxIconEx.Selections)
-                RobloxIcons.Add(new RobloxIconEntry { IconType = entry });
+            foreach (var entry in BootstrapperIconEx.Selections)
+                Icons.Add(new BootstrapperIconEntry { IconType = entry });
 
             PopulateCustomThemes();
         }
@@ -96,7 +85,7 @@ namespace BeastStrap.UI.ViewModels.Settings
             set => App.Settings.Prop.Locale = Locale.GetIdentifierFromName(value);
         }
 
-        // ===== App theming (BeastStrap fork feature) — live-editable brand palette =====
+        // ===== App theming (BeastStrap fork feature) â€” live-editable brand palette =====
         private BeastStrap.Models.ThemePalette Pal => App.Settings.Prop.Palette;
         private void ApplyTheme() => BeastStrap.Utility.ThemeManager.Apply(App.Settings.Prop.Palette);
 
@@ -104,50 +93,388 @@ namespace BeastStrap.UI.ViewModels.Settings
         public ICommand BrowseAppIconCommand => new RelayCommand(BrowseAppIcon);
         public ICommand ClearAppIconCommand => new RelayCommand(() => AppIconLocation = "");
 
-        public IEnumerable<string> ThemePresets => BeastStrap.Utility.ThemeManager.Presets.Keys.Append("Custom");
+        // Built-in presets, then the creator themes (picking one here applies the whole creator theme,
+        // same as its card's Apply button), then Custom.
+        public IEnumerable<string> ThemePresets => BeastStrap.Utility.ThemeManager.Presets.Keys
+            .Concat(BeastStrap.Models.CreatorTheme.All.Select(c => c.Name))
+            .Append("Custom");
 
         public string SelectedThemePreset
         {
             get => App.Settings.Prop.SelectedThemePreset;
             set
             {
+                if (value is null)
+                    return;
+
+                var creator = BeastStrap.Models.CreatorTheme.All.FirstOrDefault(c => c.Name == value);
+                if (creator != null)
+                {
+                    ApplyCreator(creator);
+                    return;
+                }
+
                 App.Settings.Prop.SelectedThemePreset = value;
                 OnPropertyChanged(nameof(SelectedThemePreset));
 
                 if (BeastStrap.Utility.ThemeManager.Presets.TryGetValue(value, out var preset))
                 {
+                    // A plain preset means leaving any creator theme behind, art and all.
+                    EndSeasonalForThisYear();
+                    App.Settings.Prop.ActiveCreatorTheme = "";
                     App.Settings.Prop.Palette = preset.Clone();
                     ApplyTheme();
+                    BeastStrap.Utility.ThemeManager.ApplyWindowIcons();
                     NotifyColours();
+                    RefreshCreatorCards();
+                    RefreshThemeIcons();
                 }
             }
+        }
+
+        // ===== Creator themes =====
+
+        public sealed class CreatorCard : NotifyPropertyChangedViewModel
+        {
+            public BeastStrap.Models.CreatorTheme Theme { get; }
+            public System.Windows.Media.ImageSource? Avatar { get; }
+            public System.Windows.Media.ImageSource? Banner { get; }
+
+            // The creator's own colours, whatever theme is active right now.
+            public IReadOnlyList<System.Windows.Media.Brush> Swatches { get; }
+            public System.Windows.Media.Brush RingBrush { get; }
+
+            // The card's Apply button wears the card's own button gradient (the brighter one on hover, as the
+            // app's primary buttons do), not the active theme's, so each card previews its own theme.
+            public System.Windows.Media.Brush ApplyBrush { get; }
+            public System.Windows.Media.Brush ApplyHoverBrush { get; }
+            private readonly System.Windows.Media.Brush _accentBrush;
+
+            public ICommand ApplyCommand { get; }
+            public ICommand LinkCommand { get; }
+
+            public bool IsActive => App.Settings.Prop.ActiveCreatorTheme == Theme.Id;
+
+            // Active AND still on their own colours. Tweaking a colour keeps the art (still ACTIVE) but makes the
+            // palette Custom, and the card used to stay on a disabled "Applied" with no way back to their colours.
+            private bool IsPristine => IsActive && App.Settings.Prop.SelectedThemePreset == Theme.Name;
+
+            public Visibility ActiveVisibility => IsActive ? Visibility.Visible : Visibility.Collapsed;
+            public Visibility AppliedVisibility => IsPristine ? Visibility.Visible : Visibility.Collapsed;
+            public Visibility ApplyVisibility => IsPristine ? Visibility.Collapsed : Visibility.Visible;
+            public string ApplyText => IsActive ? "Re-apply colours" : "Apply theme";
+            public Visibility LinkVisibility => Theme.HasLink ? Visibility.Visible : Visibility.Collapsed;
+            public System.Windows.Media.Brush CardBorder => IsActive
+                ? _accentBrush
+                : (System.Windows.Media.Brush)(Application.Current.TryFindResource("GlassBorderBrush") ?? System.Windows.Media.Brushes.Transparent);
+
+            public CreatorCard(BeastStrap.Models.CreatorTheme theme, Action<BeastStrap.Models.CreatorTheme> apply)
+            {
+                Theme = theme;
+                // Decoded at about twice the size they're drawn, not at full size: twelve 1400 px banners for a 66 px
+                // strip and 256 px avatars for a 58 px ring cost the settings window about 50 MB. 700 px covers the
+                // widest card a maximized window gets, and the strip grows with the card (see AppearancePage).
+                Avatar = Load(theme.AvatarUri, 128);
+                Banner = Load(theme.CardBannerUri, 700);
+
+                var p = theme.Palette;
+                System.Windows.Media.Color C(string hex) => BeastStrap.Utility.ThemeManager.Parse(hex, System.Windows.Media.Colors.Gray);
+                // Their three colours. Not the card surface: it's a near-black a step off the card's own
+                // background, so it rendered as an empty-looking fourth dot.
+                Swatches = new[] { p.Accent, p.GradientEnd, p.Purple }
+                    .Select(h => (System.Windows.Media.Brush)Frozen(new System.Windows.Media.SolidColorBrush(C(h))))
+                    .ToList();
+                _accentBrush = Frozen(new System.Windows.Media.SolidColorBrush(C(p.Accent)));
+                var tm = (Start: C(p.GradientStart), End: C(p.GradientEnd), Third: C(p.Purple));
+                RingBrush = BeastStrap.Utility.ThemeManager.Gradient(tm.Start, tm.End, tm.Third);
+                ApplyBrush = BeastStrap.Utility.ThemeManager.ButtonGradient(tm.Start, tm.End, tm.Third);
+                ApplyHoverBrush = BeastStrap.Utility.ThemeManager.Gradient(
+                    BeastStrap.Utility.ThemeManager.Lighten(BeastStrap.Utility.ThemeManager.LiftForLabel(tm.Start), 0.28),
+                    BeastStrap.Utility.ThemeManager.Lighten(BeastStrap.Utility.ThemeManager.LiftForLabel(tm.End), 0.28),
+                    BeastStrap.Utility.ThemeManager.Lighten(tm.Third, 0.28));
+
+                ApplyCommand = new RelayCommand(() => apply(theme));
+                LinkCommand = new RelayCommand(() =>
+                {
+                    if (theme.Url is not null)
+                        GlobalViewModel.OpenWebpageCommand.Execute(theme.Url);
+                });
+            }
+
+            public void Refresh()
+            {
+                OnPropertyChanged(nameof(IsActive));
+                OnPropertyChanged(nameof(ActiveVisibility));
+                OnPropertyChanged(nameof(AppliedVisibility));
+                OnPropertyChanged(nameof(ApplyVisibility));
+                OnPropertyChanged(nameof(ApplyText));
+                OnPropertyChanged(nameof(CardBorder));
+            }
+
+            private static T Frozen<T>(T f) where T : System.Windows.Freezable { f.Freeze(); return f; }
+
+            private static System.Windows.Media.ImageSource? Load(string uri, int decodeWidth)
+            {
+                try
+                {
+                    var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                    bmp.BeginInit();
+                    bmp.UriSource = new Uri(uri, UriKind.Absolute);
+                    bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bmp.DecodePixelWidth = decodeWidth;
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    return bmp;
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException("AppearanceViewModel::CreatorCard", ex);
+                    return null;
+                }
+            }
+        }
+
+        private List<CreatorCard>? _creatorCards;
+        public List<CreatorCard> CreatorCards => _creatorCards ??= BeastStrap.Models.CreatorTheme.All.Select(c => new CreatorCard(c, ApplyCreator)).ToList();
+
+        // The page shows them in groups. Same card objects as above, so a refresh reaches all of them.
+        public List<CreatorCard> YouTuberCards => CreatorCards.Where(c => c.Theme.Kind == BeastStrap.Models.CreatorKind.YouTuber).ToList();
+        public List<CreatorCard> SiteCards => CreatorCards.Where(c => c.Theme.Kind == BeastStrap.Models.CreatorKind.ScriptSite).ToList();
+        public List<CreatorCard> SeasonalCards => CreatorCards.Where(c => c.Theme.Kind == BeastStrap.Models.CreatorKind.Seasonal).ToList();
+
+        // ===== Seasonal themes =====
+
+        // One yearly on/off switch per seasonal theme, under their cards.
+        public sealed class SeasonalSwitch : NotifyPropertyChangedViewModel
+        {
+            private readonly Action _changed;
+
+            public BeastStrap.Models.CreatorTheme Theme { get; }
+            public string Header => Theme.Season?.SwitchHeader ?? "";
+            public string Description => Theme.Season?.SwitchDescription ?? "";
+
+            public SeasonalSwitch(BeastStrap.Models.CreatorTheme theme, Action changed)
+            {
+                Theme = theme;
+                _changed = changed;
+            }
+
+            public bool IsOn
+            {
+                get => App.Settings.Prop.SeasonalThemesOff?.Contains(Theme.Id) != true;
+                set
+                {
+                    var off = App.Settings.Prop.SeasonalThemesOff ??= new();
+                    off.RemoveAll(id => id == Theme.Id);
+
+                    // Switching it back on means now as well, so it also forgets a "turned off for this year". Without
+                    // that, flipping it on during its days did nothing until next year. Only this run's: an old entry
+                    // changes nothing, and removing it made closing the window ask about unsaved changes.
+                    if (value)
+                    {
+                        var skips = App.Settings.Prop.SeasonalThemesSkipped;
+                        if (skips is not null && Theme.Season?.RunYear(BeastStrap.Utility.ThemeManager.Today) is int year
+                            && skips.TryGetValue(Theme.Id, out int skipped) && skipped == year)
+                            skips.Remove(Theme.Id);
+                    }
+                    else
+                    {
+                        // Kept in order: the unsaved-changes check hashes the list, and off-on-off would otherwise
+                        // reorder it and ask about changes that aren't there.
+                        off.Add(Theme.Id);
+                        off.Sort(StringComparer.Ordinal);
+                    }
+
+                    OnPropertyChanged(nameof(IsOn));
+                    _changed();
+                }
+            }
+        }
+
+        private List<SeasonalSwitch>? _seasonalSwitches;
+        public List<SeasonalSwitch> SeasonalSwitches => _seasonalSwitches ??=
+            BeastStrap.Models.CreatorTheme.Seasonals.Select(t => new SeasonalSwitch(t, ReapplyWholeTheme)).ToList();
+
+        // The notice at the top of Creator themes. It covers the seasonal theme whose run today is (yearly switch on),
+        // unless that's the user's own saved theme, which simply shows: while it's standing in for theirs, and after
+        // it's been turned off for this year, so that's one click to undo.
+        private static BeastStrap.Models.CreatorTheme? NoticeTheme =>
+            BeastStrap.Models.CreatorTheme.Running(BeastStrap.Utility.ThemeManager.Today, App.Settings.Prop) is { } theme
+            && !theme.Id.Equals(App.Settings.Prop.ActiveCreatorTheme, StringComparison.OrdinalIgnoreCase)
+                ? theme : null;
+
+        private static bool SeasonalShowing => BeastStrap.Utility.ThemeManager.ActiveSeasonal is not null;
+
+        public Visibility SeasonalNoticeVisibility => NoticeTheme is null ? Visibility.Collapsed : Visibility.Visible;
+        public string SeasonalGreeting => NoticeTheme?.Season?.Greeting ?? "";
+
+        public string SeasonalNotice => NoticeTheme is not { Season: { } season } theme ? ""
+            : SeasonalShowing ? season.Notice
+            : $"The {theme.Name} theme is off until next year.";
+
+        public string SeasonalButtonText => !SeasonalShowing ? "Turn it back on"
+            : NoticeTheme?.Season?.Days > 1 ? "Turn it off for this year"
+            : "Turn it off for today";
+
+        public ICommand SeasonalButtonCommand => new RelayCommand(() =>
+        {
+            if (SeasonalShowing)
+                EndSeasonalForThisYear();
+            else if (NoticeTheme is { } theme)
+                App.Settings.Prop.SeasonalThemesSkipped?.Remove(theme.Id);
+
+            ReapplyWholeTheme();
+        });
+
+        // Any theme choice made during a seasonal run beats it, for the rest of the run this year. Even when it isn't
+        // standing in because it IS the saved theme: otherwise picking something else would bring it straight back.
+        private void EndSeasonalForThisYear()
+        {
+            var today = BeastStrap.Utility.ThemeManager.Today;
+            if (BeastStrap.Models.CreatorTheme.InSeason(today, App.Settings.Prop) is { Season: { } season } theme && season.RunYear(today) is int year)
+                (App.Settings.Prop.SeasonalThemesSkipped ??= new())[theme.Id] = year;
+        }
+
+        private void ReapplyWholeTheme()
+        {
+            ApplyTheme();
+            BeastStrap.Utility.ThemeManager.ApplyWindowIcons();
+            RefreshCreatorCards();
+            RefreshThemeIcons();
+        }
+
+        private void NotifySeasonal()
+        {
+            OnPropertyChanged(nameof(SeasonalNoticeVisibility));
+            OnPropertyChanged(nameof(SeasonalGreeting));
+            OnPropertyChanged(nameof(SeasonalNotice));
+            OnPropertyChanged(nameof(SeasonalButtonText));
+        }
+
+        // Settings pages are cached for the window's lifetime, so this page can come back after the theme changed
+        // under it (a seasonal run starting or ending at midnight, or a change made from another window). It follows
+        // ThemeManager while it's on screen and catches up each time it's shown. Wired to the page's Loaded/Unloaded.
+        public void StartFollowingTheme()
+        {
+            BeastStrap.Utility.ThemeManager.ThemeStateChanged -= OnThemeStateChanged;
+            BeastStrap.Utility.ThemeManager.ThemeStateChanged += OnThemeStateChanged;
+
+            // Bring the theme itself up to date first. The window only rechecks once a minute, so just after midnight
+            // the page could describe today while the app still wore yesterday's theme.
+            try
+            {
+                BeastStrap.Utility.ThemeManager.ApplyFromSettings();
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteException("AppearanceViewModel::StartFollowingTheme", ex);
+            }
+
+            OnThemeStateChanged();
+        }
+
+        public void StopFollowingTheme() => BeastStrap.Utility.ThemeManager.ThemeStateChanged -= OnThemeStateChanged;
+
+        private void OnThemeStateChanged()
+        {
+            RefreshCreatorCards();
+            RefreshThemeIcons();
+        }
+
+        // Only for a SAVED creator theme. A seasonal one standing in has the notice's own button, which keeps the
+        // user's colours. This one resets them to the Default preset, and it used to appear for everyone during a run.
+        public Visibility CreatorActiveVisibility =>
+            BeastStrap.Models.CreatorTheme.Find(App.Settings.Prop.ActiveCreatorTheme) is null ? Visibility.Collapsed : Visibility.Visible;
+
+        public ICommand UseStandardLookCommand => new RelayCommand(() => SelectedThemePreset = "Default");
+
+        // The whole creator theme in one go: palette, art, window icons. Tweaking a colour afterwards keeps
+        // the art (MarkCustom leaves ActiveCreatorTheme alone), so people can fine-tune an edition.
+        private void ApplyCreator(BeastStrap.Models.CreatorTheme creator)
+        {
+            EndSeasonalForThisYear();
+            App.Settings.Prop.ActiveCreatorTheme = creator.Id;
+            App.Settings.Prop.Palette = creator.Palette.Clone();
+            App.Settings.Prop.SelectedThemePreset = creator.Name;
+
+            ApplyTheme();
+            BeastStrap.Utility.ThemeManager.ApplyWindowIcons();
+
+            OnPropertyChanged(nameof(SelectedThemePreset));
+            NotifyColours();
+            RefreshCreatorCards();
+            RefreshThemeIcons();
+        }
+
+        private void RefreshCreatorCards()
+        {
+            foreach (var card in CreatorCards)
+                card.Refresh();
+            OnPropertyChanged(nameof(CreatorActiveVisibility));
+            NotifySeasonal();
+        }
+
+        // The Bootstrapper section's "BeastStrap" icon entry is the theme's icon, so redraw it when the theme
+        // (not just a colour) changes.
+        private void RefreshThemeIcons()
+        {
+            foreach (var entry in Icons)
+                entry.Refresh();
         }
 
         // Accent drives the gradient start + glow too, so the palette stays cohesive from one colour.
         public string AccentHex
         {
             get => Pal.Accent;
-            set { Pal.Accent = value; Pal.GradientStart = value; Pal.Glow = value; MarkCustom(); ApplyTheme(); }
+            set { Pal.Accent = value; Pal.GradientStart = value; Pal.Glow = value; MarkCustom(); ApplyTheme(); NotifySwatches(); }
         }
         public string GradientEndHex
         {
             get => Pal.GradientEnd;
-            set { Pal.GradientEnd = value; MarkCustom(); ApplyTheme(); }
+            set { Pal.GradientEnd = value; MarkCustom(); ApplyTheme(); NotifySwatches(); }
         }
         public string PurpleHex
         {
             get => Pal.Purple;
-            set { Pal.Purple = value; MarkCustom(); ApplyTheme(); }
+            set { Pal.Purple = value; MarkCustom(); ApplyTheme(); NotifySwatches(); }
         }
         public string BackgroundHex
         {
             get => Pal.Background;
-            set { Pal.Background = value; MarkCustom(); ApplyTheme(); }
+            set { Pal.Background = value; MarkCustom(); ApplyTheme(); NotifySwatches(); }
         }
         public string SurfaceHex
         {
             get => Pal.Surface;
-            set { Pal.Surface = value; MarkCustom(); ApplyTheme(); }
+            set { Pal.Surface = value; MarkCustom(); ApplyTheme(); NotifySwatches(); }
+        }
+
+        // The swatch beside each hex box, from the same SAVED palette the box shows. They used to be the live brand
+        // brushes, which during a seasonal run put the seasonal colours next to the user's own hex values.
+        private (System.Windows.Media.Color Accent, System.Windows.Media.Color GradientStart, System.Windows.Media.Color GradientEnd,
+            System.Windows.Media.Color Purple, System.Windows.Media.Color Background, System.Windows.Media.Color Surface,
+            System.Windows.Media.Color Hairline, System.Windows.Media.Color Glow) Saved => BeastStrap.Utility.ThemeManager.Resolve(Pal);
+
+        public System.Windows.Media.Brush AccentSwatch => Swatch(Saved.Accent);
+        public System.Windows.Media.Brush GradientSwatch => BeastStrap.Utility.ThemeManager.Gradient(Saved.GradientStart, Saved.GradientEnd, Saved.Purple);
+        public System.Windows.Media.Brush PurpleSwatch => Swatch(Saved.Purple);
+        public System.Windows.Media.Brush BackgroundSwatch => Swatch(Saved.Background);
+        public System.Windows.Media.Brush SurfaceSwatch => Swatch(Saved.Surface);
+
+        private static System.Windows.Media.Brush Swatch(System.Windows.Media.Color c)
+        {
+            var brush = new System.Windows.Media.SolidColorBrush(c);
+            brush.Freeze();
+            return brush;
+        }
+
+        private void NotifySwatches()
+        {
+            OnPropertyChanged(nameof(AccentSwatch));
+            OnPropertyChanged(nameof(GradientSwatch));
+            OnPropertyChanged(nameof(PurpleSwatch));
+            OnPropertyChanged(nameof(BackgroundSwatch));
+            OnPropertyChanged(nameof(SurfaceSwatch));
         }
 
         public bool EnableAurora
@@ -204,9 +531,6 @@ namespace BeastStrap.UI.ViewModels.Settings
         public double WallpaperOpacity
         {
             get => App.Settings.Prop.WallpaperOpacity;
-            // Just push the live opacity resource (consumed via DynamicResource) instead of a
-            // full ThemeManager.Apply — a full rebuild re-decodes the image and re-applies the
-            // accent on every slider tick, which is what made the slider laggy.
             set
             {
                 App.Settings.Prop.WallpaperOpacity = value;
@@ -229,7 +553,7 @@ namespace BeastStrap.UI.ViewModels.Settings
             EnableWallpaper = false;
         }
 
-        // ===== Animated (GIF) background — mirrors the custom wallpaper above =====
+        // ===== Animated (GIF) background =====
         public ICommand BrowseGifWallpaperCommand => new RelayCommand(BrowseGifWallpaper);
         public ICommand ClearGifWallpaperCommand => new RelayCommand(ClearGifWallpaper);
 
@@ -255,8 +579,6 @@ namespace BeastStrap.UI.ViewModels.Settings
             }
         }
 
-        // Giphy / motionbgs / direct URL entry. Loaded into the same GifWallpaperLocation
-        // setting, so a remote GIF or video survives restarts exactly like a local file.
         private string _gifWallpaperUrl = "";
         public string GifWallpaperUrl
         {
@@ -275,8 +597,6 @@ namespace BeastStrap.UI.ViewModels.Settings
             EnableGifWallpaper = true;
         }
 
-        // Pushing a resource value is cheap and updates every DynamicResource consumer (the
-        // WallpaperBackground / GifBackground controls) instantly — no theme rebuild.
         private static void UpdateOpacityResource(string key, double value)
             => System.Windows.Application.Current.Resources[key] = Math.Clamp(value, 0.1, 1.0);
 
@@ -297,8 +617,10 @@ namespace BeastStrap.UI.ViewModels.Settings
 
         private void MarkCustom()
         {
+            EndSeasonalForThisYear();
             App.Settings.Prop.SelectedThemePreset = "Custom";
             OnPropertyChanged(nameof(SelectedThemePreset));
+            RefreshCreatorCards();
         }
 
         private void NotifyColours()
@@ -308,17 +630,23 @@ namespace BeastStrap.UI.ViewModels.Settings
             OnPropertyChanged(nameof(PurpleHex));
             OnPropertyChanged(nameof(BackgroundHex));
             OnPropertyChanged(nameof(SurfaceHex));
+            NotifySwatches();
         }
 
         private void ResetTheme()
         {
+            EndSeasonalForThisYear();
             App.Settings.Prop.Palette = new BeastStrap.Models.ThemePalette();
             App.Settings.Prop.SelectedThemePreset = "Default";
+            App.Settings.Prop.ActiveCreatorTheme = "";
             App.Settings.Prop.EnableAurora = true;
             App.Settings.Prop.EnableGlass = true;
             App.Settings.Prop.EnableGlow = true;
 
             ApplyTheme();
+            BeastStrap.Utility.ThemeManager.ApplyWindowIcons();
+            RefreshCreatorCards();
+            RefreshThemeIcons();
             NotifyColours();
             OnPropertyChanged(nameof(SelectedThemePreset));
             OnPropertyChanged(nameof(EnableAurora));
@@ -345,25 +673,13 @@ namespace BeastStrap.UI.ViewModels.Settings
             AppIconLocation = dialog.FileName;
         }
 
+        // ThemeManager owns the icon choice now (custom icon, else the creator theme's, else BeastStrap's)
+        // and applies it to every window as it opens, so a custom icon also survives a restart.
         private void ApplyAppIcon()
         {
             try
             {
-                string path = App.Settings.Prop.CustomAppIconLocation;
-
-                Uri uri = !string.IsNullOrEmpty(path) && File.Exists(path)
-                    ? new Uri(path)
-                    : new Uri("pack://application:,,,/BeastStrap.ico");
-
-                var src = new System.Windows.Media.Imaging.BitmapImage();
-                src.BeginInit();
-                src.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                src.UriSource = uri;
-                src.EndInit();
-                src.Freeze();
-
-                foreach (Window window in Application.Current.Windows)
-                    window.Icon = src;
+                BeastStrap.Utility.ThemeManager.ApplyWindowIcons();
             }
             catch (Exception ex)
             {
@@ -385,43 +701,39 @@ namespace BeastStrap.UI.ViewModels.Settings
 
         public bool CustomThemesExpanded => App.Settings.Prop.BootstrapperStyle == BootstrapperStyle.CustomDialog;
 
-        // ===== Roblox window (v420.46, ported from FishyStrap) =====
-        // Custom icon / title for the RUNNING Roblox window. Gated behind
-        // EnableWindowManipulation on the Integrations page; only applied by the watcher
-        // when that toggle is on.
-        public ObservableCollection<RobloxIconEntry> RobloxIcons { get; set; } = new();
+        public ObservableCollection<BootstrapperIconEntry> Icons { get; set; } = new();
 
-        public RobloxIcon RobloxIcon
+        public BootstrapperIcon Icon
         {
-            get => App.Settings.Prop.RobloxIcon;
-            set => App.Settings.Prop.RobloxIcon = value;
+            get => App.Settings.Prop.BootstrapperIcon;
+            set => App.Settings.Prop.BootstrapperIcon = value; 
         }
 
-        public string WindowTitle
+        public string Title
         {
-            get => App.Settings.Prop.RobloxTitle;
-            set => App.Settings.Prop.RobloxTitle = value;
+            get => App.Settings.Prop.BootstrapperTitle;
+            set => App.Settings.Prop.BootstrapperTitle = value;
         }
 
-        public string CustomRobloxIconLocation
+        public string CustomIconLocation
         {
-            get => App.Settings.Prop.RobloxIconCustomLocation;
+            get => App.Settings.Prop.BootstrapperIconCustomLocation;
             set
             {
                 if (String.IsNullOrEmpty(value))
                 {
-                    if (App.Settings.Prop.RobloxIcon == RobloxIcon.IconCustom)
-                        App.Settings.Prop.RobloxIcon = RobloxIcon.IconDefault;
+                    if (App.Settings.Prop.BootstrapperIcon == BootstrapperIcon.IconCustom)
+                        App.Settings.Prop.BootstrapperIcon = BootstrapperIcon.IconBloxstrap;
                 }
                 else
                 {
-                    App.Settings.Prop.RobloxIcon = RobloxIcon.IconCustom;
+                    App.Settings.Prop.BootstrapperIcon = BootstrapperIcon.IconCustom;
                 }
 
-                App.Settings.Prop.RobloxIconCustomLocation = value;
+                App.Settings.Prop.BootstrapperIconCustomLocation = value;
 
-                OnPropertyChanged(nameof(RobloxIcon));
-                OnPropertyChanged(nameof(RobloxIcons));
+                OnPropertyChanged(nameof(Icon));
+                OnPropertyChanged(nameof(Icons));
             }
         }
 
@@ -461,6 +773,15 @@ namespace BeastStrap.UI.ViewModels.Settings
             if (SelectedCustomTheme is null)
                 return;
 
+            // DeleteCustomThemeStructure is a recursive Directory.Delete, so this really does
+            // take the files off disk â€” and not via the recycle bin. Say so plainly.
+            var confirm = Frontend.ShowMessageBox(
+                $"Delete the custom theme '{SelectedCustomTheme}'?\n\nIts folder is removed from disk along with everything in it â€” Theme.xml, images, sounds. There's no undo, so export it first if you might want it back.",
+                MessageBoxImage.Warning, MessageBoxButton.YesNo, MessageBoxResult.No);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
             try
             {
                 DeleteCustomThemeStructure(SelectedCustomTheme);
@@ -468,7 +789,7 @@ namespace BeastStrap.UI.ViewModels.Settings
             catch (Exception ex)
             {
                 App.Logger.WriteException("AppearanceViewModel::DeleteCustomTheme", ex);
-                Frontend.ShowMessageBox(string.Format(Strings.Menu_Appearance_CustomThemes_DeleteFailed, SelectedCustomTheme, ex.Message), MessageBoxImage.Error);
+                Frontend.ShowMessageBox($"Couldn't delete the theme '{SelectedCustomTheme}'. Something is probably holding its files open â€” close the theme editor and any Explorer window in its folder, then try again.", MessageBoxImage.Error);
                 return;
             }
 
@@ -534,7 +855,7 @@ namespace BeastStrap.UI.ViewModels.Settings
             catch (Exception ex)
             {
                 App.Logger.WriteException(LOG_IDENT, ex);
-                Frontend.ShowMessageBox(string.Format(Strings.Menu_Appearance_CustomThemes_RenameFailed, SelectedCustomTheme, ex.Message), MessageBoxImage.Error);
+                Frontend.ShowMessageBox($"Couldn't rename the theme '{SelectedCustomTheme}'. Something is probably holding its files open â€” close the theme editor and any Explorer window in its folder, then try again.", MessageBoxImage.Error);
                 return;
             }
 
@@ -592,7 +913,7 @@ namespace BeastStrap.UI.ViewModels.Settings
                         zipStream.Finish();
                     }
 
-                    // Buffer the whole archive in memory first, then write in one shot — a
+                    // Buffer the whole archive in memory first, then write in one shot â€” a
                     // failure part-way through never leaves a truncated .zip at the target.
                     File.WriteAllBytes(dialog.FileName, memStream.ToArray());
                 }
@@ -602,7 +923,7 @@ namespace BeastStrap.UI.ViewModels.Settings
             catch (Exception ex)
             {
                 App.Logger.WriteException("AppearanceViewModel::ExportCustomTheme", ex);
-                Frontend.ShowMessageBox($"Couldn't export the theme '{SelectedCustomTheme}': {ex.Message}", MessageBoxImage.Error);
+                Frontend.ShowMessageBox($"Couldn't export the theme '{SelectedCustomTheme}'. Check you can write to the folder you picked and that the theme's files aren't open somewhere else, then try again.", MessageBoxImage.Error);
             }
         }
 
@@ -646,7 +967,7 @@ namespace BeastStrap.UI.ViewModels.Settings
 
                 // The list binds straight to this, so it's the only place that knows the
                 // selection moved. Seed the rename box from the current name and let the
-                // action buttons re-evaluate IsEnabled — without this they stay greyed out
+                // action buttons re-evaluate IsEnabled â€” without this they stay greyed out
                 // no matter what you click.
                 SelectedCustomThemeName = value ?? "";
 

@@ -1,6 +1,8 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
 
     <!--
         BeastStrap brand palette, taken from the logo: electric ice-blue that fades to a colder
@@ -59,12 +61,57 @@
         <GradientStop Color="#FFB3E5FD" Offset="1" />
     </LinearGradientBrush>
 
+    <!-- Primary buttons (dark label). Same as the brand gradient in the default look; ThemeManager lifts dark
+         palette ends so the label stays readable. -->
+    <LinearGradientBrush x:Key="BrandButtonGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{StaticResource BrandCyanColor}" Offset="0" />
+        <GradientStop Color="{StaticResource BrandGreenColor}" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="BrandButtonGradientBrightBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#FF7DD4F9" Offset="0" />
+        <GradientStop Color="#FFB3E5FD" Offset="1" />
+    </LinearGradientBrush>
+
     <!-- Violet -> blue -> ice diagonal, for larger hero surfaces (Home header, installer). -->
     <LinearGradientBrush x:Key="BrandGradientTriBrush" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="{StaticResource BrandPurpleColor}" Offset="0" />
         <GradientStop Color="{StaticResource BrandCyanColor}" Offset="0.55" />
         <GradientStop Color="{StaticResource BrandGreenColor}" Offset="1" />
     </LinearGradientBrush>
+
+    <!-- The launcher aurora's three blobs (AmbientBackground). ThemeManager rewrites these from the palette. -->
+    <RadialGradientBrush x:Key="AuroraAccentBrush">
+        <GradientStop Color="#4038BDF8" Offset="0" />
+        <GradientStop Color="#0038BDF8" Offset="1" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="AuroraPurpleBrush">
+        <GradientStop Color="#40A78BFA" Offset="0" />
+        <GradientStop Color="#00A78BFA" Offset="1" />
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="AuroraSecondaryBrush">
+        <GradientStop Color="#307DD3FC" Offset="0" />
+        <GradientStop Color="#007DD3FC" Offset="1" />
+    </RadialGradientBrush>
+
+    <!--
+        Brand art: BeastStrap's own. A creator theme (Models.CreatorTheme) swaps these for the creator's
+        avatar, name and banner by writing overrides into Application.Current.Resources, and switching back
+        REMOVES those overrides so lookups fall through to these again. Consumers must use DynamicResource.
+    -->
+    <BitmapImage x:Key="BrandAppIconImage" UriSource="pack://application:,,,/Resources/BeastStrapIcon.png" />
+    <BitmapImage x:Key="BrandTitleBarIcon" UriSource="pack://application:,,,/BeastStrap.ico" />
+    <!-- 16-20 px spots that aren't a title bar (the tray menu's header) -->
+    <BitmapImage x:Key="BrandSmallIconImage" UriSource="pack://application:,,,/Resources/BeastStrapIcon.png" />
+    <Visibility x:Key="BrandDefaultArtVisibility">Visible</Visibility>
+    <Visibility x:Key="BrandCreatorArtVisibility">Collapsed</Visibility>
+    <sys:String x:Key="CreatorName"></sys:String>
+    <sys:String x:Key="CreatorHandle"></sys:String>
+    <sys:String x:Key="CreatorTagline"></sys:String>
+    <sys:String x:Key="CreatorUrl"></sys:String>
+    <Visibility x:Key="CreatorLinkVisibility">Collapsed</Visibility>
+    <sys:String x:Key="CreatorLinkText"></sys:String>
+    <ui:SymbolRegular x:Key="CreatorLinkIcon">Globe24</ui:SymbolRegular>
+    <sys:String x:Key="BrandEditionText"></sys:String>
 
     <!-- Monospace family for technical readouts: version GUIDs, fast-flag names, channel/status. -->
     <FontFamily x:Key="BrandMonoFont">Consolas</FontFamily>
@@ -124,6 +171,10 @@
         <Setter Property="Foreground" Value="{DynamicResource BrandCyanBrush}" />
     </Style>
 
+    <!-- "All good" status green. Deliberately NOT themed: under a red or orange theme a "LIVE — locked" in the
+         theme's colour read as an error, and the launcher's own status pill is always green. -->
+    <SolidColorBrush x:Key="StatusGoodBrush" Color="#FF4ADE80" />
+
     <!-- Elevated glass tile for the Home dashboard status cards; lights up cyan on hover. -->
     <Style x:Key="HomeTile" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource GlassFillBrush}" />
@@ -169,8 +220,14 @@
 
     <!-- Muted chip palette: a faint accent wash and soft accent edge, so a selected filter reads calm
          against the dark UI instead of glowing neon. -->
-    <SolidColorBrush x:Key="ChipCheckedBg" Color="#2822D3EE" />
-    <SolidColorBrush x:Key="ChipCheckedBorder" Color="#6622D3EE" />
+    <!-- Accent washes. ThemeManager rewrites all six from the palette's accent, so consumers must use
+         DynamicResource (a StaticResource here would keep the blue). -->
+    <SolidColorBrush x:Key="BrandAccentHoverBrush" Color="#1A38BDF8" />
+    <SolidColorBrush x:Key="ChipCheckedBg" Color="#2838BDF8" />
+    <SolidColorBrush x:Key="BrandAccentSelectedBrush" Color="#2E38BDF8" />
+    <SolidColorBrush x:Key="BrandAccentEdgeBrush" Color="#5538BDF8" />
+    <SolidColorBrush x:Key="ChipCheckedBorder" Color="#6638BDF8" />
+    <SolidColorBrush x:Key="BrandAccentStrongBrush" Color="#8838BDF8" />
 
     <!--
         Category badges, shared by the News tab (IMP/FIX on Roblox release notes) and a future
@@ -190,6 +247,26 @@
     <SolidColorBrush x:Key="NoteBadgeFg" Color="#E3B871" />
     <SolidColorBrush x:Key="NeutralBadgeBg" Color="#18FFFFFF" />
     <SolidColorBrush x:Key="NeutralBadgeFg" Color="#A8B3BF" />
+    <!-- Same ~14% wash recipe, in the muted red the StatusText style already uses for errors. -->
+    <SolidColorBrush x:Key="ErrBadgeBg" Color="#24F0A0A0" />
+    <SolidColorBrush x:Key="ErrBadgeFg" Color="#F0A0A0" />
+    <!-- HOT (a featured pick): a warmer, brighter wash than the others so it draws the eye first. -->
+    <SolidColorBrush x:Key="HotBadgeBg" Color="#33FF6A2B" />
+    <SolidColorBrush x:Key="HotBadgeFg" Color="#FF9A5C" />
+
+    <!-- Small uppercase status pill (BETA, WORKS, WAIT 12s…). Mirrors ChangelogPage's ReleasePill so the
+         two read as one family. Background/Foreground come from a badge pair above. -->
+    <Style x:Key="Pill" TargetType="Border">
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="PillText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="9.5" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
 
     <!-- Pill "chip" filter, templated onto a RadioButton so one-of-N select comes for free. -->
     <Style x:Key="Chip" TargetType="RadioButton">
@@ -208,11 +285,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="chip" Property="BorderBrush" Value="{StaticResource ChipCheckedBorder}" />
+                            <Setter TargetName="chip" Property="BorderBrush" Value="{DynamicResource ChipCheckedBorder}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="chip" Property="Background" Value="{StaticResource ChipCheckedBg}" />
-                            <Setter TargetName="chip" Property="BorderBrush" Value="{StaticResource ChipCheckedBorder}" />
+                            <Setter TargetName="chip" Property="Background" Value="{DynamicResource ChipCheckedBg}" />
+                            <Setter TargetName="chip" Property="BorderBrush" Value="{DynamicResource ChipCheckedBorder}" />
                             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>

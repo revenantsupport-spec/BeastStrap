@@ -1,4 +1,4 @@
-namespace BeastStrap.Utility
+﻿namespace BeastStrap.Utility
 {
     // Who caused the crash we're about to explain to the user.
     public enum CrashFault
@@ -14,15 +14,22 @@ namespace BeastStrap.Utility
         Unknown
     }
 
-    /// <param name="SelfCleared">
-    /// True only when we actually managed to read BeastStrap's own logs for the crash window
-    /// and found nothing incriminating. This gates the "it wasn't us" line in the dialog — if we
-    /// never looked, we don't get to claim innocence.
+    // There used to be a SelfCleared flag here, which the dialog turned into "We checked
+    // BeastStrap's own logs for this launch and found nothing wrong on our end". It was computed
+    // as `ourSessions.Count > 0` — literally "we found at least one log file". It never checked
+    // whether anything was wrong, and since the watcher's own log always exists it was
+    // unconditionally true. Removed rather than fixed: the dialog now stays silent when it has no
+    // verdict, so there is nothing left to reassure anyone about.
+    /// <param name="Certain">
+    /// False when the evidence shows we were doing something risky nearby, but not that we actually
+    /// killed the client. The dialog softens its opening line for these. Real uncertainty stated
+    /// plainly is honest; what is not allowed is a confident headline over evidence that cannot
+    /// carry it.
     /// </param>
-    public sealed record CrashVerdict(CrashFault Fault, string RuleId, string Message, bool SelfCleared)
+    public sealed record CrashVerdict(CrashFault Fault, string RuleId, string Message, bool Certain = true)
     {
-        public static CrashVerdict Inconclusive(bool selfCleared) =>
-            new(CrashFault.Unknown, "none", "", selfCleared);
+        public static CrashVerdict Inconclusive() =>
+            new(CrashFault.Unknown, "none", "");
     }
 
     /// <summary>
@@ -51,7 +58,7 @@ namespace BeastStrap.Utility
     {
         private const RegexOptions Opts = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled;
 
-        private sealed record OursRule(string Id, Func<AppLogSession, bool> Matches, string Message);
+        private sealed record OursRule(string Id, Func<AppLogSession, bool> Matches, string Message, bool Certain = true);
 
         #region Signatures of BeastStrap wrecking its own install
 
@@ -125,51 +132,66 @@ namespace BeastStrap.Utility
             + @"|VersionProfileLayout::TryMoveAside",
             Opts);
 
-        // The client on disk isn't the build we thought was installed, so it may have started with
-        // an exe and a content tree from two different Roblox versions.
-        private static readonly Regex MixedBuild = new(
-            @"\[Bootstrapper::InstalledExeMatchesLatest\].*: differs", Opts);
+        // (MixedBuild regex removed along with ours/mixed-build — see the note in the rule table.)
 
         #endregion
 
         // Ordered most-definitive first, same convention as the third-party table below.
         private static readonly OursRule[] OurRules =
         {
+            // COPY RULES for everything below. These strings go straight into a dialog the user has
+            // to dismiss, so: state the cause in one sentence, give one thing they can do, stop.
+            // No bold lead-ins (MarkdownTextBlock truncates nested inlines anyway), no em dashes,
+            // no "it looks like" / "this may have been", and no reassurance nobody asked for.
+            // Never claim something is fixed unless it actually is — several of these causes are
+            // still open, and telling someone to update when that would not help is just noise.
+            // ⚠️ Do NOT add "this is fixed, just update" here. UpgradeRoblox now refuses to clear the
+            // version directory when a client is still running out of it, but Cancel() still does the
+            // same unguarded recursive delete over that same folder, so ours/install-deleted and
+            // ours/install-wiped-on-cancel below both stay exactly as they are. Telling someone on
+            // the newest build that the newest build fixes it is worse than saying nothing.
             new("ours/install-deleted",
                 s => DeletedInstall.IsMatch(s.Text),
-                "**This one was on us.** While your game was running, BeastStrap was clearing out the "
-                + "Roblox folder it was running from, so Roblox lost files it still needed and died. "
-                + "Nothing is wrong with your PC. Make sure you're on the latest version of BeastStrap — "
-                + "this doesn't happen any more."),
+                "BeastStrap was clearing out the Roblox folder while your game was running, so Roblox "
+                + "lost files it needed.\n\nClose Roblox before starting another launch that updates it."),
 
             new("ours/install-overwritten",
                 s => ExtractionCollided.IsMatch(s.Text) || (s.IsBackgroundUpdater && WasExtracting.IsMatch(s.Text)),
-                "**This one was on us.** BeastStrap was writing a Roblox update into the same folder your "
-                + "game was already running from, which corrupts the copy that's running. Nothing is wrong "
-                + "with your PC. Make sure you're on the latest version of BeastStrap."),
+                "BeastStrap wrote a Roblox update into the folder your game was already running from, "
+                + "which corrupts the running copy.\n\nClose Roblox before letting an update run."),
 
             new("ours/client-killed",
                 s => KilledClients.IsMatch(s.Text),
-                "**This wasn't a crash — it was us.** Another BeastStrap launch decided Roblox needed "
-                + "updating and shut down every running client to do it, including this one. If you use "
-                + "Multi Instance, let one launch finish updating before starting the next."),
+                "Another launch needed to update Roblox and closed every running client to do it, "
+                + "including this one.\n\nIf you use Multi Instance, let one launch finish updating "
+                + "before you start the next."),
 
             new("ours/install-wiped-on-cancel",
                 s => CancelledLaunch.IsMatch(s.Text) && WasInstalling.IsMatch(s.Text),
-                "**This one was on us.** A launch was cancelled part way through an update, and BeastStrap "
-                + "deleted the Roblox folder while your game was still using it."),
+                "A launch was cancelled part way through an update, and BeastStrap deleted the Roblox "
+                + "folder while your game was still using it.\n\nLaunch again and BeastStrap will put "
+                + "back a clean copy."),
 
+            // Certain: false — backing off from a move is evidence we were busy near this client's
+            // install, not evidence we closed it. The dialog softens its opening line to match.
             new("ours/layout-backoff",
                 s => LayoutBackedOff.IsMatch(s.Text),
-                "**This may have been us.** BeastStrap tried to move Roblox's install folder around while a "
-                + "client was still running out of it, and had to give up part way. If you're switching "
-                + "version profiles, close every Roblox window first, then launch."),
+                "BeastStrap tried to move Roblox's install folder while a client was still running from "
+                + "it, and gave up part way.\n\nClose every Roblox window before switching version "
+                + "profiles.",
+                Certain: false),
 
-            new("ours/mixed-build",
-                s => MixedBuild.IsMatch(s.Text),
-                "**This may have been us.** The Roblox client on disk didn't match the build BeastStrap "
-                + "thought was installed, so the game may have started with files from two different "
-                + "versions. Launch again and BeastStrap will lay down a clean copy."),
+            // ours/mixed-build DELETED.
+            //
+            // It matched "[Bootstrapper::InstalledExeMatchesLatest] ...: differs", which is written on
+            // an ORDINARY launch every time the client on disk is older than latest — i.e. the first
+            // launch after every Roblox version bump, before the upgrade lands. Roblox updates, the
+            // user launches, "differs" is logged, the upgrade succeeds, and if that client then dies
+            // of something unrelated the line is still inside the crash window and we accused
+            // ourselves off the back of routine upgrade bookkeeping.
+            //
+            // Same defect class as the deleted theirs/blocked-overlay rule: it fires on healthy
+            // launches. The audit question applies to OUR rules too, not just Roblox's logs.
         };
 
         #region Turning a raw log file into a windowed session
@@ -222,19 +244,46 @@ namespace BeastStrap.Utility
             return kept.ToString();
         }
 
+        // Roblox's client log uses the same prefix plus milliseconds, then a comma:
+        // "2026-08-19T10:08:59.180Z,0.180925,badc,6,Warning [FLog::...]"
+        private const string RobloxTimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+
+        /// <summary>
+        /// Reads the leading UTC timestamp off a log line, in either BeastStrap's or Roblox's
+        /// format.
+        /// </summary>
+        /// <remarks>
+        /// Handling BOTH formats is what lets Roblox's logs be narrowed to the crash window the same
+        /// way ours are. They never used to be: the whole 1 MB tail went to the rules, so a line
+        /// from the first minute of a six-hour session could "explain" a death at the end of it, and
+        /// a healthy concurrent client's log could supply the verdict for a different client's
+        /// crash. Every third-party rule was unreliable for that reason alone.
+        /// </remarks>
         public static bool TryParseTimestamp(string line, out DateTime stamp)
         {
             stamp = default;
 
-            if (line.Length < TimestampFormat.Length || line[TimestampFormat.Length - 1] != 'Z')
-                return false;
+            if (line.Length >= TimestampFormat.Length
+                && line[TimestampFormat.Length - 1] == 'Z'
+                && DateTime.TryParseExact(
+                    line.Substring(0, TimestampFormat.Length),
+                    TimestampFormat,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+                    out stamp))
+                return true;
 
-            return DateTime.TryParseExact(
-                line.Substring(0, TimestampFormat.Length),
-                TimestampFormat,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
-                out stamp);
+            if (line.Length >= RobloxTimestampFormat.Length
+                && line[RobloxTimestampFormat.Length - 1] == 'Z'
+                && DateTime.TryParseExact(
+                    line.Substring(0, RobloxTimestampFormat.Length),
+                    RobloxTimestampFormat,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+                    out stamp))
+                return true;
+
+            return false;
         }
 
         #endregion
@@ -245,15 +294,12 @@ namespace BeastStrap.Utility
         /// </summary>
         public static CrashVerdict Evaluate(IReadOnlyList<AppLogSession> ourSessions, IReadOnlyList<string> robloxLogs)
         {
-            // We only get to say "not our fault" if we actually managed to read our own logs.
-            bool selfChecked = ourSessions.Count > 0;
-
             foreach (var rule in OurRules)
             {
                 foreach (var session in ourSessions)
                 {
                     if (rule.Matches(session))
-                        return new CrashVerdict(CrashFault.Ours, rule.Id, rule.Message, false);
+                        return new CrashVerdict(CrashFault.Ours, rule.Id, rule.Message, rule.Certain);
                 }
             }
 
@@ -261,65 +307,66 @@ namespace BeastStrap.Utility
             {
                 var theirs = ClassifyRobloxLog(log);
                 if (theirs is not null)
-                    return theirs with { SelfCleared = selfChecked };
+                    return theirs;
             }
 
-            return CrashVerdict.Inconclusive(selfChecked);
+            // Unknown is a perfectly good answer and the caller shows nothing for it. Guessing here
+            // is how we ended up telling people to switch off their graphics overlay.
+            return CrashVerdict.Inconclusive();
         }
 
         // Third-party and environmental causes, read out of Roblox's own client log. First match
-        // wins, ordered most-definitive first. These messages deliberately stop at "here's the
-        // cause and here's the fix" — the "it wasn't BeastStrap" line is added by the caller,
-        // and only when the self-check above actually cleared us.
+        // wins, ordered most-definitive first.
+        //
+        // ⚠️ EVERY rule here must survive one question: DOES THIS STRING ALSO APPEAR IN A SESSION
+        // THAT DID NOT CRASH? Two rules failed that badly enough to be deleted outright:
+        //
+        //   theirs/blocked-overlay matched "Blocked DLL: <name>" and told the user to switch off
+        //   their NVIDIA overlay. Checked against 15 real client logs: the only 2 containing it
+        //   were HEALTHY sessions of 251s and 109s that both shut down gracefully. Roblox's
+        //   anti-cheat refusing to let an overlay inject is routine designed behaviour, not a
+        //   fault. It even scraped "robloxcrashhandler.exe" — Roblox's own crash handler, and not
+        //   a DLL — and called it an overlay.
+        //
+        //   theirs/out-of-memory matched "out of memory" / "OutOfMemory" case-insensitively, which
+        //   hits component names, telemetry keys and crashpad annotations in perfectly healthy
+        //   logs. It never meant the process died.
+        //
+        // Do not add a rule here that fires on a single substring. If it cannot carry a repeat
+        // count or some other corroboration, it is not evidence and it does not belong.
+        //
+        // Note the caller narrows this log to the crash window first, so a match is also recent —
+        // that is what stops a line from hour one of a long session explaining a death at hour six.
         private static CrashVerdict? ClassifyRobloxLog(string log)
         {
-            // Graphics driver lost the device — a hard, unambiguous crash.
-            if (Regex.IsMatch(log, @"DXGI_ERROR_DEVICE_REMOVED|DXGI_ERROR_DEVICE_HUNG|GfxCrash|graphics device (removed|lost)|D3D.{0,20}device (removed|lost)", RegexOptions.IgnoreCase))
+            // Graphics driver lost the device. Only the two hard DXGI codes, which mean the renderer
+            // is gone — the looser prose forms ("graphics device lost", "D3D ... device removed") and
+            // the bare token "GfxCrash" are out, because they match lines that merely NAME the
+            // failure or the crash-reporting component.
+            //
+            // Deliberately a single occurrence. A repeat count reads as prudent here but is not: a
+            // session that survives a TDR never reaches this analyzer at all, so requiring two would
+            // only ever suppress the fatal single-occurrence case it is supposed to catch. The
+            // corroboration is structural instead — the caller narrowed this to the dead client's
+            // own window, and the gate above already established it died before reaching gameplay.
+            if (Regex.IsMatch(log, @"DXGI_ERROR_DEVICE_REMOVED|DXGI_ERROR_DEVICE_HUNG", RegexOptions.IgnoreCase))
                 return new(CrashFault.Theirs, "theirs/gpu-device-lost",
-                    "This looks like a **graphics driver** problem — Roblox lost contact with your GPU. "
-                    + "Update your graphics driver (or roll it back if you just updated it), and try lowering "
-                    + "Roblox's graphics quality.", false);
+                    "Roblox lost contact with your graphics card.\n\nUpdate your graphics driver, or roll "
+                    + "it back if you updated it recently.");
 
-            // Ran out of memory.
-            if (Regex.IsMatch(log, @"bad_alloc|out of memory|OutOfMemory|Not enough memory", RegexOptions.IgnoreCase))
-                return new(CrashFault.Theirs, "theirs/out-of-memory",
-                    "Roblox ran **out of memory**. Close other apps (browsers especially) and try again. "
-                    + "If you're running several clients at once, try running fewer.", false);
-
-            // Firewall / antivirus / VPN deliberately blocking the connection: Winsock 10013 is
-            // ACCESS DENIED, a security product refusing the socket. Ranked above the overlay
-            // block below because that block is usually benign, while access-denied is a real,
-            // deliberate block that breaks connectivity.
-            if (Regex.IsMatch(log, @"OS_ERRNO:\s*10013|WSAEACCES|errno[:=\s]+10013", RegexOptions.IgnoreCase))
+            // Winsock 10013 is ACCESS DENIED — a security product deliberately refusing the socket.
+            // \b so 10013 can't match inside 100134, and repeats required because a single refused
+            // endpoint (telemetry, a CDN host) is retried and recovered without the user noticing.
+            if (Regex.Matches(log, @"OS_ERRNO:\s*10013\b|WSAEACCES|errno[:=\s]+10013\b", RegexOptions.IgnoreCase).Count >= 2)
                 return new(CrashFault.Theirs, "theirs/socket-access-denied",
-                    "Your **firewall, antivirus, or VPN** looks like it is blocking Roblox from connecting "
-                    + "(Windows error 10013, access denied). Allow Roblox through your firewall and antivirus, "
-                    + "or turn off your VPN, then try again.", false);
+                    "Something on your PC is blocking Roblox from connecting. That is usually a firewall, "
+                    + "antivirus or VPN.\n\nAllow Roblox through, or turn the VPN off, then try again.");
 
-            // Roblox's anti-cheat blocked a third-party overlay/capture tool from hooking the game.
-            var blocked = Regex.Match(log, @"Blocked DLL:.*?([^\\/]+\.dll)", RegexOptions.IgnoreCase);
-            if (blocked.Success)
-            {
-                string dll = blocked.Groups[1].Value.ToLowerInvariant();
-                string tool =
-                    dll.Contains("nvspcap") || dll.Contains("nvcamera") || dll.StartsWith("nvgx") || dll.Contains("nvidia") ? "the NVIDIA GeForce Experience / ShadowPlay overlay"
-                    : dll.Contains("rtss") ? "the RivaTuner / MSI Afterburner overlay"
-                    : dll.Contains("discord") ? "the Discord in-game overlay"
-                    : dll.Contains("gameoverlayrenderer") ? "the Steam overlay"
-                    : dll.Contains("graphics-hook") ? "OBS (game capture)"
-                    : dll.Contains("fraps") ? "Fraps"
-                    : "a third-party overlay or screen-capture tool";
-                return new(CrashFault.Theirs, "theirs/blocked-overlay",
-                    $"Roblox's anti-cheat blocked **{tool}** from hooking into the game, which can crash it. "
-                    + "Turn that overlay or capture tool off for Roblox and try again.", false);
-            }
-
-            // Weaker signal, last: a run of connection failures straight to Roblox with no explicit
-            // access-denied. Generic connectivity trouble rather than a named blocker.
+            // A run of connection failures. This was always the best-evidenced rule here — it is the
+            // only one that ever required corroboration.
             if (Regex.Matches(log, @"Failed to connect to \S*roblox\.com", RegexOptions.IgnoreCase).Count >= 3)
                 return new(CrashFault.Theirs, "theirs/no-connection",
-                    "Roblox couldn't reach its servers — this looks like a **network or connection** problem "
-                    + "on your side (Wi-Fi, VPN, or an unstable connection). Check your connection and try again.", false);
+                    "Roblox could not reach its servers.\n\nCheck your connection and try again.");
 
             return null;
         }

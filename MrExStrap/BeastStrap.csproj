@@ -12,8 +12,8 @@
     <Product>BeastStrap</Product>
     <AssemblyTitle>BeastStrap Live Channel Forcer</AssemblyTitle>
     <Company>BeastStrap</Company>
-    <Version>420.74.0</Version>
-    <FileVersion>420.74.0.0</FileVersion>
+    <Version>420.76.0</Version>
+    <FileVersion>420.76.0.0</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
@@ -24,6 +24,13 @@
     <Resource Include="BeastStrap.ico" />
     <Resource Include="Resources\BeastStrap.png" />
     <Resource Include="Resources\BeastStrapIcon.png" />
+    <Resource Include="Resources\PromoRobloxScripts.png" />
+    <Resource Include="Resources\PromoGetExecutors.png" />
+    <Resource Include="Resources\PromoZeroPoint.png" />
+    <Resource Include="Resources\PromoFarmSync.png" />
+    <Resource Include="Resources\Creators\*.png" />
+    <Resource Include="Resources\Creators\*.jpg" />
+    <Resource Include="Resources\Creators\*.ico" />
     <Resource Include="Resources\Fonts\NotoSansThai-VariableFont_wdth,wght.ttf" />
     <Resource Include="Resources\Fonts\Rubik-VariableFont_wght.ttf" />
     <Resource Include="Resources\BootstrapperStyles\ByfronDialog\ByfronLogoDark.jpg" />
@@ -74,6 +81,7 @@
     </PackageReference>
     <PackageReference Include="securifybv.ShellLink" Version="0.1.0" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
     <PackageReference Include="System.Resources.ResourceManager" Version="4.3.0" />
     <PackageReference Include="XamlAnimatedGif" Version="2.3.0" />

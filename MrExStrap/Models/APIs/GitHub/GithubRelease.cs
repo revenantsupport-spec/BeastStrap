@@ -22,5 +22,11 @@ namespace BeastStrap.Models.APIs.GitHub
 
         [JsonPropertyName("assets")]
         public List<GithubReleaseAsset>? Assets { get; set; }
+
+        [JsonPropertyName("draft")]
+        public bool Draft { get; set; }
+
+        [JsonPropertyName("prerelease")]
+        public bool Prerelease { get; set; }
     }
 }

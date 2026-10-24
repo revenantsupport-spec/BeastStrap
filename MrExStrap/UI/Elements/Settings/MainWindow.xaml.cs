@@ -25,7 +25,7 @@ namespace BeastStrap.UI.Elements.Settings
         // Settings as they were once the window had finished setting itself up. Taken after
         // LoadState() rather than before, so any normalising a page's view model does while
         // initialising counts as "not a user edit" and doesn't trigger the prompt on close.
-        private readonly string _settingsBaseline;
+        private string _settingsBaseline;
 
         public MainWindow(bool showAlreadyRunningWarning)
         {
@@ -36,7 +36,10 @@ namespace BeastStrap.UI.Elements.Settings
             viewModel.RequestLaunchAndCloseEvent += (_, _) => { _launchOnClose = true; Close(); };
 
             DataContext = viewModel;
-            
+
+            // The Home page's creator hero is the only thing that draws a theme's banner, so only this window loads it.
+            BeastStrap.Utility.ThemeManager.UseBanner();
+
             InitializeComponent();
 
             // Show the app version in the window + taskbar title, e.g. "BeastStrap - Settings - v420.35".
@@ -81,7 +84,50 @@ namespace BeastStrap.UI.Elements.Settings
                 catch { }
             };
 
+            // Housekeeping before the baseline, so it counts as "not a user edit": seasonal skips whose run is over
+            // change nothing, and leaving them in let a later toggle look like an unsaved change. Written on the next
+            // Save. Only here because this window is the one place that writes Settings.json.
+            BeastStrap.Models.CreatorTheme.PruneFinishedSkips(App.Settings.Prop, BeastStrap.Utility.ThemeManager.Today);
+
             _settingsBaseline = App.Settings.ComputeCurrentHash();
+            App.Settings.Saved += OnSettingsSaved;
+
+            // A seasonal theme starts and ends at midnight, and this window can stay open across that, even in front
+            // the whole time. The theme is otherwise only worked out as a window opens, so look again whenever the
+            // user comes back to it, and once a minute. Cheap: ApplyFromSettings does nothing unless something
+            // changed, and when it does, ThemeManager brings the icons and the Appearance page along.
+            Activated += (_, _) => RecheckTheme();
+            _themeTimer.Tick += (_, _) => RecheckTheme();
+            _themeTimer.Start();
+        }
+
+        private readonly System.Windows.Threading.DispatcherTimer _themeTimer = new() { Interval = TimeSpan.FromMinutes(1) };
+
+        private static void RecheckTheme()
+        {
+            try
+            {
+                BeastStrap.Utility.ThemeManager.ApplyFromSettings();
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteException("MainWindow::RecheckTheme", ex);
+            }
+        }
+
+        // LastFileHash is the hash of exactly what was just written, and the save serialises the same way
+        // ComputeCurrentHash does, so it IS the new "nothing unsaved" state. Captured on the saving thread,
+        // applied on ours.
+        private void OnSettingsSaved()
+        {
+            string? written = App.Settings.LastFileHash;
+            if (written is null)
+                return;
+
+            if (Dispatcher.CheckAccess())
+                _settingsBaseline = written;
+            else
+                Dispatcher.BeginInvoke(new Action(() => _settingsBaseline = written));
         }
 
         public void LoadState()
@@ -138,9 +184,7 @@ namespace BeastStrap.UI.Elements.Settings
             // Settings count as safe to discard if they match EITHER what we started with (no
             // edits) or what is on disk (edited, then saved — LastFileHash moves on every write,
             // including the save behind "Save and launch Roblox", which closes this window).
-            string current = App.Settings.ComputeCurrentHash();
-            bool settingsEdited = current != _settingsBaseline
-                               && current != (App.Settings.LastFileHash ?? current);
+            bool settingsEdited = App.Settings.ComputeCurrentHash() != _settingsBaseline;
 
             if (App.FastFlags.Changed || App.PendingSettingTasks.Any() || settingsEdited)
             {
@@ -161,6 +205,9 @@ namespace BeastStrap.UI.Elements.Settings
 
         private void WpfUiWindow_Closed(object sender, EventArgs e)
         {
+            // "Save and launch" carries on in this process as the bootstrapper. Don't keep re-theming it.
+            _themeTimer.Stop();
+
             if (_launchOnClose || App.LaunchSettings.TestModeFlag.Active)
                 LaunchHandler.LaunchRoblox(LaunchMode.Player);
             else
@@ -306,8 +353,6 @@ namespace BeastStrap.UI.Elements.Settings
             { "fastflags", "CUSTOMIZATION" },
             { "global", "CUSTOMIZATION" },
             { "appearance", "CUSTOMIZATION" },
-            { "obfuscator", "TOOLS" },
-            { "deobfuscator", "TOOLS" },
             { "linkbypasser", "TOOLS" }
         };
 
