@@ -13,6 +13,23 @@
     <Grid Margin="0,0,14,14">
         <StackPanel MaxWidth="660" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,28,0,0">
 
+            <!-- Top action row: keeps the executor checker and version history out of the way of the hero banner. -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ui:Button Grid.Column="0" Padding="14,8" Height="40"
+                           Appearance="Secondary" Icon="History32" FontSize="14"
+                           Content="Version history"
+                           Click="VersionHistoryButton_Click" />
+                <ui:Button Grid.Column="2" Padding="14,8" Height="40"
+                           Appearance="Secondary" Icon="Flash24" FontSize="14"
+                           Content="Executor checker"
+                           Click="ExecutorCheckerButton_Click" />
+            </Grid>
+
             <!-- Brand wordmark with neon glow -->
             <Image Source="pack://application:,,,/Resources/BeastStrap.png"
                    Width="380" HorizontalAlignment="Center"
@@ -181,30 +198,6 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
-                <!-- Community tile — installs + Discord online, fetched from public data only -->
-                <Border Style="{StaticResource HomeTile}" Width="198" MinHeight="80">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <ui:SymbolIcon Symbol="PeopleTeam24" FontSize="15" VerticalAlignment="Center"
-                                           Foreground="{DynamicResource BrandPurpleBrush}" />
-                            <TextBlock Text="COMMUNITY" Style="{StaticResource BrandSectionHeader}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding CommunityLine}" FontSize="18" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource BrandCyanBrush}"
-                                   TextTrimming="CharacterEllipsis"
-                                   ToolTip="Total installer downloads across all releases. Fetched from public release data — nothing about you is counted or sent.">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding CommunityLine}" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
             </WrapPanel>
 
             <!-- Primary launch CTA — clean cyan->green gradient (glow removed, glassy look).
@@ -216,28 +209,9 @@
                        Content="Save and launch Roblox"
                        Click="SaveAndLaunchButton_Click" />
 
-            <!-- Rotating promo -->
-            <controls:PromoBanner Margin="6,18,6,0" />
-
             <TextBlock HorizontalAlignment="Center" Margin="0,14,0,0" FontSize="12"
                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                        Text="LIVE channel is re-locked on every launch." />
         </StackPanel>
-
-        <!-- Executor checker — one click opens the live WEAO board (same dialog as the
-             Versions Manager toolbar). Pinned top-right so it's always visible. -->
-        <ui:Button Margin="0,24,26,0" HorizontalAlignment="Right" VerticalAlignment="Top"
-                   Padding="14,8" Height="40"
-                   Appearance="Secondary" Icon="Flash24" FontSize="14"
-                   Content="Executor checker"
-                   Click="ExecutorCheckerButton_Click" />
-
-        <!-- Version history — mirrors the executor checker button on the top-left.
-             Opens the app's own GitHub release changelog. -->
-        <ui:Button Margin="26,24,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
-                   Padding="14,8" Height="40"
-                   Appearance="Secondary" Icon="History32" FontSize="14"
-                   Content="Version history"
-                   Click="VersionHistoryButton_Click" />
     </Grid>
 </ui:UiPage>

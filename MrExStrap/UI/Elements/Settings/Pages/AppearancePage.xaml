@@ -252,6 +252,62 @@
         <controls:OptionControl Header="Neon glow" Description="Soft glow on the wordmark and accent edges.">
             <ui:ToggleSwitch IsChecked="{Binding EnableGlow, Mode=TwoWay}" />
         </controls:OptionControl>
+        <controls:OptionControl Header="Gradient direction" Description="Which way the brand gradient sweeps across buttons, dividers and hero cards.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding GradientDirections}" SelectedItem="{Binding GradientDirection, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Path=., Converter={StaticResource EnumNameConverter}}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </controls:OptionControl>
+        <controls:OptionControl Header="Glow intensity" Description="How strong the neon glow is. Off disables it even when the toggle above is on.">
+            <ComboBox Width="200" Padding="10,5,10,5" ItemsSource="{Binding GlowIntensities}" SelectedItem="{Binding GlowIntensity, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Path=., Converter={StaticResource EnumNameConverter}}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </controls:OptionControl>
+
+        <!-- Custom wallpaper -->
+        <TextBlock Text="Background image" Style="{StaticResource SubSectionHeaderText}" Margin="0,18,0,0" />
+        <controls:OptionControl Header="Custom wallpaper" Description="A picture behind the settings pages and launch menu, dimmed behind the glass content. Picking one turns this on.">
+            <StackPanel Orientation="Horizontal">
+                <ui:ToggleSwitch IsChecked="{Binding EnableWallpaper, Mode=TwoWay}" />
+                <ui:Button Margin="8,0,0,0" Icon="FolderOpen24" Content="Browse" Command="{Binding BrowseWallpaperCommand}" />
+                <ui:Button Margin="8,0,0,0" Icon="Delete24" Content="Clear" Command="{Binding ClearWallpaperCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+        <controls:OptionControl Header="Wallpaper strength" Description="How strongly the image shows through (0-100%).">
+            <Slider Width="200" Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                    Value="{Binding WallpaperOpacity, Mode=TwoWay, Converter={StaticResource OpacityPercentConverter}}" />
+        </controls:OptionControl>
+        <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding WallpaperLocation}" />
+
+        <!-- Animated background (GIF) -->
+        <TextBlock Text="Animated background" Style="{StaticResource SubSectionHeaderText}" Margin="0,18,0,0" />
+        <controls:OptionControl Header="GIF / animated wallpaper" Description="A looping animated background behind the settings pages and launch menu. Picking one turns this on. Layers on top of the custom wallpaper above.">
+            <StackPanel Orientation="Horizontal">
+                <ui:ToggleSwitch IsChecked="{Binding EnableGifWallpaper, Mode=TwoWay}" />
+                <ui:Button Margin="8,0,0,0" Icon="FolderOpen24" Content="Browse" Command="{Binding BrowseGifWallpaperCommand}" />
+                <ui:Button Margin="8,0,0,0" Icon="Delete24" Content="Clear" Command="{Binding ClearGifWallpaperCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+        <controls:OptionControl Header="GIF wallpaper strength" Description="How strongly the animation shows through (0-100%).">
+            <Slider Width="200" Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                    Value="{Binding GifWallpaperOpacity, Mode=TwoWay, Converter={StaticResource OpacityPercentConverter}}" />
+        </controls:OptionControl>
+        <controls:OptionControl Header="Wallpaper from URL" Description="Paste a Giphy link (giphy.com/gifs/...), a motionbgs.com page, or a direct .gif / .mp4 URL, then Load. Remote wallpapers stay live across restarts.">
+            <StackPanel Orientation="Horizontal">
+                <ui:TextBox Width="240" PlaceholderText="https://motionbgs.com/... or https://giphy.com/gifs/..." Text="{Binding GifWallpaperUrl, UpdateSourceTrigger=PropertyChanged}" />
+                <ui:Button Margin="8,0,0,0" Icon="Link24" Content="Load" Command="{Binding LoadGifWallpaperUrlCommand}" />
+            </StackPanel>
+        </controls:OptionControl>
+        <TextBlock Margin="6,4,0,0" FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding GifWallpaperLocation}" />
 
         <!-- App icon -->
         <TextBlock Text="App icon" Style="{StaticResource SubSectionHeaderText}" Margin="0,18,0,0" />
