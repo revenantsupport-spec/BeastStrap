@@ -249,7 +249,7 @@ namespace BeastStrap.UI.Elements.Settings
             {
                 if (obj is Wpf.Ui.Controls.NavigationItem nav)
                 {
-                    string title = nav.Content?.ToString()?.ToLowerInvariant() ?? "";
+                    string title = ExtractNavItemTitle(nav);
                     string tag = nav.Tag?.ToString()?.ToLowerInvariant() ?? "";
                     string page = nav.PageType?.Name.ToLowerInvariant() ?? "";
 
@@ -267,6 +267,24 @@ namespace BeastStrap.UI.Elements.Settings
             // Keep the Pinned header hidden during search if nothing is pinned
             if (App.State.Prop.PinnedSidebarTabs.Count == 0)
                 PinnedHeader.Visibility = System.Windows.Visibility.Collapsed;
+        }
+
+        private static string ExtractNavItemTitle(Wpf.Ui.Controls.NavigationItem nav)
+        {
+            if (nav.Content is string s)
+                return s.ToLowerInvariant();
+
+            // Items with badge stacks (e.g. BanAsync "IN DEV" pill) — gather child text
+            if (nav.Content is System.Windows.Controls.StackPanel sp)
+            {
+                var texts = new List<string>();
+                foreach (var child in sp.Children.OfType<System.Windows.Controls.TextBlock>())
+                    if (!string.IsNullOrWhiteSpace(child.Text))
+                        texts.Add(child.Text);
+                return string.Join(" ", texts).ToLowerInvariant();
+            }
+
+            return nav.Content?.ToString()?.ToLowerInvariant() ?? "";
         }
 
         private void SetupCollapsibleHeaders()

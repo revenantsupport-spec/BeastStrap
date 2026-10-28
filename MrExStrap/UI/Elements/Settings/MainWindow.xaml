@@ -80,6 +80,7 @@
                 <ui:NavigationFluent.Items>
                     <ui:NavigationItem Content="Home" PageType="{x:Type pages:HomePage}" Icon="Home24" Tag="home" />
                     <ui:NavigationItem Content="News" PageType="{x:Type pages:NewsPage}" Icon="News20" Tag="news" />
+                    <ui:NavigationItem Content="Scripts" PageType="{x:Type pages:ScriptsPage}" Icon="Code24" Tag="scripts" />
 
                     <ui:NavigationHeader x:Name="PinnedHeader" Text="PINNED" />
 
@@ -98,7 +99,14 @@
                     <ui:NavigationItem Content="Multi Instance" PageType="{x:Type pages:MultiInstancePage}" Icon="PeopleTeam24" Tag="multiinstance" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <ui:NavigationItem Content="Accounts Manager" PageType="{x:Type pages:AccountsManagerPage}" Icon="ContactCard24" Tag="accountsmanager" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <ui:NavigationItem Content="Alt Generator" PageType="{x:Type pages:AltGenPage}" Icon="PersonAdd24" Tag="altgen" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <ui:NavigationItem Content="BanAsync" PageType="{x:Type pages:BanAsyncPage}" Icon="ShieldKeyhole24" Tag="banasync" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <ui:NavigationItem PageType="{x:Type pages:BanAsyncPage}" Icon="ShieldKeyhole24" Tag="banasync" IsEnabled="False" ToolTip="BanAsync is in development" Visibility="{Binding IsAdvancedMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="BanAsync" VerticalAlignment="Center" />
+                            <Border Background="#33FF8C00" CornerRadius="4" Margin="8,0,0,0" Padding="6,1" VerticalAlignment="Center" BorderBrush="#66FF8C00" BorderThickness="1">
+                                <TextBlock Text="IN DEV" FontSize="9" FontWeight="SemiBold" Foreground="#FFA8450B" />
+                            </Border>
+                        </StackPanel>
+                    </ui:NavigationItem>
 
                     <ui:NavigationHeader Text="CUSTOMIZATION" />
                     <ui:NavigationItem Content="{x:Static resources:Strings.Menu_Mods_Title}" PageType="{x:Type pages:ModsPage}" Icon="WrenchScrewdriver20" Tag="mods" />

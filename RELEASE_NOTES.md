@@ -1,5 +1,19 @@
 # BeastStrap Release Notes
 
+## v420.81.0
+
+### Added
+
+- Scripts is back in the sidebar. The page existed but was never reachable from the menu — now you can open it and browse the full catalogue.
+
+### Changed
+
+- BanAsync sits in the sidebar greyed out with an orange "IN DEV" badge. You can see it coming, but it can't be opened until the rewrite is finished.
+
+### Removed
+
+- The placeholder test project (BeastStrap.Tests). It only ever asserted true and wasn't wired into CI.
+
 ## v420.80.0
 
 ### Changed
