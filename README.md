@@ -60,7 +60,7 @@ cd BeastStrap
 dotnet publish MrExStrap/BeastStrap.csproj -p:PublishSingleFile=true -r win-x64 -c Release --self-contained true
 ```
 
-Output lands at `MrExStrap/bin/Release/net6.0-windows/win-x64/publish/BeastStrap.exe`.
+Output lands at `MrExStrap/bin/Release/net8.0-windows/win-x64/publish/BeastStrap.exe`.
 
 If Defender already quarantined it: **Windows Security → Virus & threat protection → Protection history → Restore**, then add an exclusion for `%localappdata%\BeastStrap`. If the auto-updater's download keeps getting flagged, grab the new release manually from the [Releases page](https://github.com/revenantsupport-spec/BeastStrap/releases). Each release is submitted to Microsoft as a false positive, which usually clears within a few days.
 
@@ -89,3 +89,4 @@ Found a bug? [Open an issue](https://github.com/revenantsupport-spec/BeastStrap/
 ---
 <sub>⭐ <b>Official source:</b> <a href="https://github.com/revenantsupport-spec/BeastStrap">github.com/revenantsupport-spec/BeastStrap</a> &nbsp;·&nbsp; built &amp; maintained by <b>revenantsupport-spec</b>. Got this somewhere else? Grab the latest, verified version at the link above.</sub>
 <!-- /sirmeme-watermark -->
+

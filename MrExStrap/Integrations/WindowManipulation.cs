@@ -117,7 +117,7 @@ namespace BeastStrap.Integrations
             style &= ~WS_MAXIMIZEBOX;
             style &= ~WS_SYSMENU;
 
-            Rectangle resolution = Screen.PrimaryScreen.Bounds;
+            Rectangle resolution = Screen.PrimaryScreen!.Bounds;
 
             PInvoke.SetWindowLong(hWnd, (WINDOW_LONG_PTR_INDEX)GWLSTYLE, style);
 

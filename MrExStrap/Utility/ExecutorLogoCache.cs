@@ -1,5 +1,7 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Security.Cryptography;
+
+using SkiaSharp;
 
 namespace BeastStrap.Utility
 {
@@ -7,7 +9,7 @@ namespace BeastStrap.Utility
     // (https://cdn.weao.gg/slug/<slug>/logo.png) for the Versions Manager tiles; the Scripts tab
     // now uses it for script thumbnails too, under its own subfolder.
     //
-    // Cache miss → download once via App.HttpClient → reuse from disk for every subsequent
+    // Cache miss  download once via App.HttpClient  reuse from disk for every subsequent
     // display. On download failure the caller falls back to its own placeholder.
     public static class ExecutorLogoCache
     {
@@ -33,7 +35,7 @@ namespace BeastStrap.Utility
         /// <param name="folder">Subfolder under Cache\. Keeps unrelated image sets apart.</param>
         /// <param name="maxFiles">
         /// When &gt; 0, prune the folder to this many files (oldest-written first) after a download.
-        /// Executor logos are naturally bounded — there are only so many executors — but script
+        /// Executor logos are naturally bounded - there are only so many executors - but script
         /// thumbnails are not: the catalogue is ~8,000 entries and browsing it would otherwise
         /// grow this folder without limit.
         /// </param>
@@ -57,19 +59,19 @@ namespace BeastStrap.Utility
 
                 // A cached file is only usable if WPF can actually decode it. Checking the length
                 // alone let a captive-portal HTML body (HTTP 200, non-empty, not an image) poison an
-                // entry permanently — every later launch took this branch and every later decode
+                // entry permanently - every later launch took this branch and every later decode
                 // threw.
                 if (File.Exists(cachePath))
                 {
                     if (HasDecodableHeader(cachePath))
                         return cachePath;
 
-                    // Zero-byte, truncated, or not an image at all — drop it and fetch again.
+                    // Zero-byte, truncated, or not an image at all - drop it and fetch again.
                     try { File.Delete(cachePath); } catch { /* best effort */ }
                 }
 
                 // ConfigureAwait(false) throughout: callers start this from the UI thread, and the
-                // download, the ImageSharp decode and the prune must not run there. ScriptRow marshals
+                // download, the decode and the prune must not run there. ScriptRow marshals
                 // back with its own Dispatcher.Invoke once the path comes back.
                 using var response = await App.HttpClient
                     .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token)
@@ -77,7 +79,7 @@ namespace BeastStrap.Utility
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    App.Logger.WriteLine(LOG_IDENT, $"HTTP {(int)response.StatusCode} fetching {url} — falling back to placeholder");
+                    App.Logger.WriteLine(LOG_IDENT, $"HTTP {(int)response.StatusCode} fetching {url} - falling back to placeholder");
                     return null;
                 }
 
@@ -87,13 +89,13 @@ namespace BeastStrap.Utility
 
                 if (bytes is null)
                 {
-                    App.Logger.WriteLine(LOG_IDENT, $"{url} exceeded {MaxImageBytes / 1024 / 1024} MB — refusing to cache it");
+                    App.Logger.WriteLine(LOG_IDENT, $"{url} exceeded {MaxImageBytes / 1024 / 1024} MB - refusing to cache it");
                     return null;
                 }
 
                 if (bytes.Length == 0)
                 {
-                    App.Logger.WriteLine(LOG_IDENT, $"{url} returned an empty body — falling back to placeholder");
+                    App.Logger.WriteLine(LOG_IDENT, $"{url} returned an empty body - falling back to placeholder");
                     return null;
                 }
 
@@ -159,31 +161,31 @@ namespace BeastStrap.Utility
         /// Applies to EVERY download, not just WebP. Two reasons: the site serves full-size PNG and
         /// JPEG banners as well (a measured 767x432 / 487 KB entry for a 44px slot), which would blow
         /// past the folder cap in megabytes rather than the ~3 MB the 128px assumption implies; and a
-        /// body that decodes as nothing — a captive-portal HTML page, say — must be rejected here
+        /// body that decodes as nothing - a captive-portal HTML page, say - must be rejected here
         /// rather than cached and served forever.
         /// </remarks>
         private static byte[]? Normalise(byte[] data, string url)
         {
-            // WebP always has to be converted — WPF has no decoder for it at all.
+            // WebP always has to be converted - WPF has no decoder for it at all.
             if (!IsWebP(data) && IsWpfDecodable(data))
             {
                 try
                 {
                     // Identify parses only the header, so a correctly-sized image costs no decode.
-                    var info = SixLabors.ImageSharp.Image.Identify(data);
-                    if (info is not null && info.Width <= MaxStoredPixels && info.Height <= MaxStoredPixels)
+                    using var codec = SKCodec.Create(new MemoryStream(data));
+                    if (codec is not null && codec.Info.Width <= MaxStoredPixels && codec.Info.Height <= MaxStoredPixels)
                         return data;
                 }
                 catch
                 {
-                    // Unreadable header — fall through and let the full decode make the call.
+                    // Unreadable header - fall through and let the full decode make the call.
                 }
             }
 
             byte[]? png = TranscodeToPng(data);
 
             if (png is null)
-                App.Logger.WriteLine(LOG_IDENT, $"{url} did not decode as an image — not caching it");
+                App.Logger.WriteLine(LOG_IDENT, $"{url} did not decode as an image - not caching it");
 
             return png;
         }
@@ -214,7 +216,7 @@ namespace BeastStrap.Utility
             }
             catch
             {
-                // Locked by another reader right now — leave it alone and use it.
+                // Locked by another reader right now - leave it alone and use it.
                 return true;
             }
         }
@@ -226,28 +228,39 @@ namespace BeastStrap.Utility
             && data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P';
 
         /// <summary>Decodes an image WPF can't read and re-encodes it as a display-sized PNG.</summary>
-        /// <returns>PNG bytes, or null if the image was corrupt — the caller shows its placeholder.</returns>
+        /// <returns>PNG bytes, or null if the image was corrupt - the caller shows its placeholder.</returns>
         private static byte[]? TranscodeToPng(byte[] data)
         {
             try
             {
-                using var image = SixLabors.ImageSharp.Image.Load(data);
+                using var bitmap = SKBitmap.Decode(data);
+                if (bitmap is null)
+                    return null;
 
-                // Don't upscale — a thumbnail smaller than the box stays as it is.
-                if (image.Width > MaxStoredPixels || image.Height > MaxStoredPixels)
+                SKBitmap target = bitmap;
+                bool disposeTarget = false;
+
+                // Don't upscale - a thumbnail smaller than the box stays as it is.
+                if (bitmap.Width > MaxStoredPixels || bitmap.Height > MaxStoredPixels)
                 {
-                    SixLabors.ImageSharp.Processing.ProcessingExtensions.Mutate(image, ctx =>
-                        SixLabors.ImageSharp.Processing.ResizeExtensions.Resize(ctx,
-                            new SixLabors.ImageSharp.Processing.ResizeOptions
-                            {
-                                Mode = SixLabors.ImageSharp.Processing.ResizeMode.Max,
-                                Size = new SixLabors.ImageSharp.Size(MaxStoredPixels, MaxStoredPixels)
-                            }));
+                    double scale = Math.Min((double)MaxStoredPixels / bitmap.Width, (double)MaxStoredPixels / bitmap.Height);
+                    int nw = Math.Max(1, (int)(bitmap.Width * scale));
+                    int nh = Math.Max(1, (int)(bitmap.Height * scale));
+                    target = bitmap.Resize(new SKImageInfo(nw, nh), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None));
+                    disposeTarget = true;
                 }
 
-                using var output = new MemoryStream();
-                image.Save(output, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
-                return output.ToArray();
+                try
+                {
+                    using var image = SKImage.FromBitmap(target);
+                    using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+                    return encoded.ToArray();
+                }
+                finally
+                {
+                    if (disposeTarget)
+                        target.Dispose();
+                }
             }
             catch (Exception ex)
             {

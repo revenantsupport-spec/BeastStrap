@@ -15,7 +15,7 @@ jobs:
 
     - uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: '6.0.x'
+        dotnet-version: '8.0.x'
 
     - name: Restore dependencies
       run: dotnet restore
@@ -113,3 +113,4 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" \
             BeastStrap-${{ github.ref_name }}.exe BeastStrap.exe SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" --clobber
+
