@@ -28,4 +28,5 @@ jobs:
       with:
         name: BeastStrap (Debug) (${{ github.sha }})
         path: .\MrExStrap\bin\Debug\net8.0-windows\win-x64\publish\*
+        if-no-files-found: error
 

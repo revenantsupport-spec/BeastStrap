@@ -31,7 +31,9 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: BeastStrap (Release) (${{ github.sha }})
-        path: .\MrExStrap\bin\Release\net6.0-windows\win-x64\publish\*
+        # net8.0-windows: the project moved off .NET 6 in v420.80.0
+        path: .\MrExStrap\bin\Release\net8.0-windows\win-x64\publish\*
+        if-no-files-found: error
 
   release:
     needs: build
@@ -43,7 +45,7 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: BeastStrap (Release) (${{ github.sha }})
           path: release
