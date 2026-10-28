@@ -44,7 +44,7 @@ $ErrorActionPreference = "Stop"
 $Repo     = "revenantsupport-spec/BeastStrap"
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Csproj   = Join-Path $RepoRoot "MrExStrap\BeastStrap.csproj"
-$Publish  = Join-Path $RepoRoot "MrExStrap\bin\Release\net6.0-windows\win-x64\publish\BeastStrap.exe"
+$Publish  = Join-Path $RepoRoot "MrExStrap\bin\Release\net8.0-windows\win-x64\publish\BeastStrap.exe"
 
 if (-not (Test-Path $Csproj)) { throw "Couldn't find $Csproj" }
 
