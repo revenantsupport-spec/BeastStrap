@@ -15,6 +15,7 @@
         ResizeMode="NoResize"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="CenterScreen"
+        Background="#070C16"
         Closing="WpfUiWindow_Closing">
     <Grid>
         <Grid.RowDefinitions>
@@ -22,8 +23,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- updater.png sunset fills the window; scrim below keeps text readable over it. -->
-        <Image Grid.RowSpan="2" Source="pack://application:,,,/Resources/updater.png" Stretch="UniformToFill" />
+        <!-- updater.png sunset as a fixed-height band (clipping hides the crop); a full-window
+             scrim keeps text readable over it. Height must be explicit: unconstrained measure of
+             UniformToFill images inflates SizeToContent windows to the bitmap's own height. -->
+        <Grid Grid.RowSpan="2" Height="300" VerticalAlignment="Top" ClipToBounds="True">
+            <Image Source="pack://application:,,,/Resources/updater.png" Stretch="UniformToFill" />
+        </Grid>
         <Rectangle Grid.RowSpan="2">
             <Rectangle.Fill>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
