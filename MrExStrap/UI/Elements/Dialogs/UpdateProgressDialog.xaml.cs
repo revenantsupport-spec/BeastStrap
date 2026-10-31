@@ -28,7 +28,7 @@ namespace BeastStrap.UI.Elements.Dialogs
 
             InitializeComponent();
 
-            HeaderText.Text = $"Downloading BeastStrap {release.TagName}…";
+            VersionText.Text = $"{release.TagName} · updating";
             Loaded += async (_, _) => await RunAsync();
         }
 

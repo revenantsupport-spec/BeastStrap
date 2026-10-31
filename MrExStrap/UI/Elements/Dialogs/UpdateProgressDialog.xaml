@@ -13,7 +13,6 @@
         Width="460"
         SizeToContent="Height"
         ResizeMode="NoResize"
-        Background="{ui:ThemeResource ApplicationBackgroundBrush}"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="CenterScreen"
         Closing="WpfUiWindow_Closing">
@@ -23,6 +22,18 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- updater.png sunset fills the window; scrim below keeps text readable over it. -->
+        <Image Grid.RowSpan="2" Source="pack://application:,,,/Resources/updater.png" Stretch="UniformToFill" />
+        <Rectangle Grid.RowSpan="2">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#8B070C16" Offset="0" />
+                    <GradientStop Color="#30070C16" Offset="0.5" />
+                    <GradientStop Color="#73070C16" Offset="1" />
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
         <ui:TitleBar Grid.Row="0" Padding="8"
                      Title="Updating BeastStrap"
                      ShowMinimize="False" ShowMaximize="False" ShowClose="False"
@@ -30,25 +41,54 @@
                      KeyboardNavigation.TabNavigation="None"
                      Icon="pack://application:,,,/BeastStrap.ico" />
 
-        <StackPanel Grid.Row="1" Margin="20,16,20,20">
-            <TextBlock x:Name="HeaderText"
-                       Text="Downloading update…"
-                       FontSize="14" FontWeight="SemiBold" />
-            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                       Text="Please wait. BeastStrap will restart and reopen the menu when the download finishes." />
+        <StackPanel Grid.Row="1">
+            <StackPanel HorizontalAlignment="Center" Margin="28,18,28,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="pack://application:,,,/Resources/BeastStrapIcon.png"
+                           Width="58" Height="58"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="BeastStrap" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock x:Name="VersionText" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <Grid Margin="28,22,28,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="HeaderText" Grid.Column="0"
+                           Text="Downloading update…"
+                           FontSize="14" FontWeight="SemiBold" />
+                <TextBlock x:Name="PercentText" Grid.Column="1"
+                           Text="0%"
+                           Visibility="Collapsed"
+                           FontSize="14" FontWeight="SemiBold" />
+            </Grid>
 
             <ProgressBar x:Name="ProgressBar"
-                         Margin="0,16,0,0"
-                         Height="6"
+                         Margin="28,12,28,0"
+                         Height="5"
                          Minimum="0" Maximum="100"
-                         IsIndeterminate="True" />
+                         IsIndeterminate="True"
+                         Foreground="{DynamicResource BrandGradientBrush}"
+                         Background="#12FFFFFF"
+                         BorderThickness="0" />
 
             <TextBlock x:Name="StatusText"
-                       Margin="0,8,0,0"
+                       Margin="28,9,28,0"
                        FontSize="11" FontFamily="Consolas"
-                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Text="Connecting…" />
+
+            <TextBlock Margin="28,10,28,22"
+                       FontSize="11"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       TextWrapping="Wrap"
+                       Text="BeastStrap will restart and reopen the menu when the download finishes." />
         </StackPanel>
     </Grid>
 </base:WpfUiWindow>
