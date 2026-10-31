@@ -6,6 +6,9 @@
 .claude/
 CLAUDE.md
 
+# Superpowers scratch workspaces (mockups, plan ledgers)
+.superpowers/
+
 # User-specific files
 *.rsuser
 *.suo
